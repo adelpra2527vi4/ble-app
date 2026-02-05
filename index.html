@@ -57,7 +57,7 @@
                     <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
                 </div>
             </div>
-            <p class="text-[10px] text-slate-500 mt-2 italic">* Il dispositivo si riavvierà al salvataggio.</p>
+            <p class="text-[10px] text-slate-500 mt-2 italic">* Max 10 Sensori. Il dispositivo si riavvierà al salvataggio.</p>
         </div>
 
         <!-- Dynamic Slots Container -->
@@ -155,7 +155,6 @@
             }
         }
 
-        // --- SETUP CONFIGURAZIONE (SEQUENZIALE) ---
         async function setupConfigMode() {
             configPanel.classList.remove('hidden');
             hubPanel.classList.add('hidden');
@@ -168,16 +167,12 @@
                 document.getElementById('sensorCountInput').value = count;
                 addLog(`Config: ${count} sensori attivi.`, 'rx');
 
-                // FIX SEQUENZIALE PER ANDROID: Loop con 'await'
                 for (let i = 1; i <= count; i++) {
                     createConfigSlot(i);
-                    // Importante: await garantisce che finisca la lettura prima di passare al prossimo
                     await readConfigSlotValues(i);
-                    // Piccolo respiro extra
                     await new Promise(r => setTimeout(r, 50));
                 }
 
-                // Setup Reset
                 const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
                 if (resetChar.properties.notify) {
                     await resetChar.startNotifications();
@@ -227,17 +222,14 @@
             charInput.placeholder = "Reading...";
 
             try {
-                // Lettura Servizio
                 const svcCharUUID = getConfigSlotUUID(index, 0);
                 const svcChar = await activeService.getCharacteristic(svcCharUUID);
                 const svcVal = await svcChar.readValue();
                 const svcStr = new TextDecoder().decode(svcVal);
                 if(svcStr) svcInput.value = svcStr; else svcInput.placeholder = "Empty";
                 
-                // Pausa obbligata per Android
                 await new Promise(r => setTimeout(r, 50));
 
-                // Lettura Caratteristica
                 const charCharUUID = getConfigSlotUUID(index, 1);
                 const charChar = await activeService.getCharacteristic(charCharUUID);
                 const charVal = await charChar.readValue();
@@ -266,9 +258,19 @@
             } catch(e) { addLog(`Err Save Slot ${index}: ${e.message}`, 'error'); }
         };
 
+        // --- VALIDAZIONE AGGIUNTA QUI ---
         async function saveSensorCount() {
             const val = document.getElementById('sensorCountInput').value;
             if(!val) return;
+
+            // VALIDAZIONE: Controllo numero sensori
+            const count = parseInt(val);
+            if (count < 1 || count > 10) {
+                alert("Errore: Il sistema supporta da 1 a 10 sensori massimo.");
+                addLog("Err: Numero sensori invalido (Max 10).", 'error');
+                return; // Blocca l'esecuzione
+            }
+
             try {
                 const char = await activeService.getCharacteristic(CHAR_COUNT_UUID);
                 addLog(`Saving count: ${val}...`, 'tx');
@@ -287,7 +289,6 @@
             } catch(e) { addLog("Err Reset: " + e.message, 'error'); }
         }
 
-        // --- SETUP HUB (SEQUENZIALE) ---
         async function setupHubMode() {
             configPanel.classList.add('hidden');
             hubPanel.classList.remove('hidden');
@@ -299,7 +300,6 @@
 
                 characteristics.forEach((char, index) => { createSensorCard(index + 1); });
 
-                // Loop sequenziale
                 for (let i = 0; i < characteristics.length; i++) {
                     const char = characteristics[i];
                     try {
@@ -310,7 +310,7 @@
                         });
                         const val = await char.readValue();
                         updateSensorCard(i + 1, new TextDecoder().decode(val));
-                        await new Promise(r => setTimeout(r, 100)); // Delay critico
+                        await new Promise(r => setTimeout(r, 100)); 
                     } catch (err) { addLog(`Err Sensor ${i + 1}`, 'error'); }
                 }
             } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
