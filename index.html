@@ -3,31 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE Professional Controller</title>
+    <title>ESP32 Dual Core Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .log-container { font-family: monospace; font-size: 0.75rem; scroll-behavior: smooth; }
-        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .log-container { font-family: 'Courier New', Courier, monospace; font-size: 0.75rem; }
         @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
         .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        .sensor-card { transition: all 0.3s ease; }
+        .sensor-connected { border-color: #10b981; background-color: rgba(16, 185, 129, 0.1); }
+        .sensor-disconnected { border-color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
 
     <!-- Header -->
     <header class="text-center mb-6 pt-2">
         <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            BLE Hub Controller
+            Smart Hub Controller
         </h1>
+        <p class="text-xs text-slate-500 mt-1">Dual Core BLE Manager</p>
     </header>
 
-    <!-- Error Banner -->
-    <div id="browserWarning" class="hidden bg-red-900/40 border border-red-500 text-red-200 p-3 rounded-xl mb-4 text-xs">
-        <p class="font-bold">Stato Sistema</p>
-        <p id="warningMessage"></p>
-    </div>
-
-    <!-- Connection & Mode Switcher -->
+    <!-- Connection Panel -->
     <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
@@ -35,267 +32,359 @@
                     <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
                     <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
                 </div>
-                <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
+                <div class="flex flex-col">
+                    <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
+                    <span id="modeText" class="text-[10px] text-slate-500 font-mono">--</span>
+                </div>
             </div>
-            <select id="modeSelect" class="bg-slate-900 text-xs border border-slate-600 rounded-lg px-2 py-1 focus:outline-none">
-                <option value="CONFIG">Mod. Configurazione (DDDD)</option>
-                <option value="HUB">Mod. Operativa (EEEE)</option>
-            </select>
         </div>
         
-        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95">
-            Connetti Dispositivo
+        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
+            📡 Connetti Dispositivo
         </button>
         <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
-            Scollega
+            ❌ Scollega
         </button>
     </div>
 
-    <!-- Main Controls -->
-    <main id="controls" class="opacity-40 pointer-events-none flex-1 transition-opacity duration-500">
-        <!-- Sensor Count Section -->
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
-            <h2 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-widest">Sensori Attivi</h2>
-            <div class="flex items-center gap-3">
-                <div id="sensorDisplay" class="bg-slate-900 text-emerald-400 font-mono text-2xl w-16 h-12 flex items-center justify-center rounded-xl border border-slate-700">
-                    --
-                </div>
-                <div class="flex-1 flex gap-2">
-                    <input id="sensorInput" type="number" placeholder="Es: 4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
-                    <button id="setSensorsBtn" class="bg-blue-600 px-4 rounded-xl font-bold text-sm hover:bg-blue-500">SET</button>
+    <!-- UI: CONFIG MODE (DDDD) -->
+    <main id="configPanel" class="hidden space-y-4">
+        <!-- Sensor Count -->
+        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
+            <h2 class="text-xs font-bold text-blue-400 mb-3 uppercase tracking-widest">Configurazione Sistema</h2>
+            <div class="flex items-center justify-between gap-4">
+                <label class="text-sm text-slate-300">Sensori Attivi:</label>
+                <div class="flex items-center gap-2">
+                    <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
+                    <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
                 </div>
             </div>
-            <button id="refreshSensorsBtn" class="w-full mt-3 text-slate-400 text-xs py-1 hover:text-white transition-colors uppercase font-semibold">
-                🔄 Aggiorna Lettura
-            </button>
+            <p class="text-[10px] text-slate-500 mt-2 italic">* Il dispositivo si riavvierà al salvataggio.</p>
         </div>
 
-        <!-- Factory Reset Section -->
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-red-400/80 mb-3 uppercase tracking-widest text-center">Area Pericolosa</h2>
-            <button id="resetBtn" class="w-full bg-red-600/10 border border-red-600/30 hover:bg-red-600 hover:text-white text-red-500 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                Factory Reset
+        <!-- Factory Reset -->
+        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30">
+            <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
+            <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                ⚠️ Factory Reset
             </button>
-            <p id="resetStatus" class="text-[10px] text-center mt-2 text-slate-500 italic">Il comando invierà "1" e attenderà "0"</p>
+            <p id="resetFeedback" class="text-[10px] text-center mt-2 text-slate-500 h-4"></p>
+        </div>
+    </main>
+
+    <!-- UI: HUB MODE (EEEE) -->
+    <main id="hubPanel" class="hidden">
+        <div class="flex justify-between items-center mb-2 px-1">
+            <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Live Data Stream</h2>
+            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400" id="hubSensorCountBadge">0 Sensori</span>
+        </div>
+        
+        <!-- Grid dinamica generata via JS -->
+        <div id="sensorGrid" class="grid grid-cols-1 gap-3">
+            <!-- Esempio Card (Verranno create dinamicamente) -->
+            <!-- 
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase">Sensore 1</div>
+                    <div class="font-mono text-xl text-white">24.5 °C</div>
+                </div>
+                <div class="text-xs px-2 py-1 rounded bg-emerald-900 text-emerald-400">Connected</div>
+            </div> 
+            -->
         </div>
     </main>
 
     <!-- System Log -->
-    <div class="mt-4">
+    <div class="mt-auto pt-6">
         <div class="flex justify-between items-center mb-1">
-            <span class="text-[10px] font-bold text-slate-600 uppercase">Log Attività</span>
-            <button id="clearLog" class="text-[10px] text-blue-500">Pulisci</button>
+            <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
+            <button id="clearLog" class="text-[10px] text-blue-500 hover:text-blue-400">Pulisci</button>
         </div>
-        <div id="log" class="log-container bg-black/50 rounded-xl p-3 h-40 overflow-y-auto text-slate-400 border border-slate-800 leading-relaxed">
-            In attesa di azione utente...
+        <div id="log" class="log-container bg-black/40 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-snug">
+            <div class="text-slate-600 italic">> Ready.</div>
         </div>
     </div>
 
     <script>
-        // UUID CONFIGURATION
-        const UUIDS = {
-            CONFIG: {
-                SERVICE: 'dddd0001-0000-1000-8000-00805f9b34fb',
-                SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
-                SENSORS_SHORT: 0xFFFF, // Fallback short UUID
-                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb',
-                RESET_SHORT: 0xFFFE
-            },
-            HUB: {
-                SERVICE: 'eeee0001-0000-1000-8000-00805f9b34fb',
-                SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
-                SENSORS_SHORT: 0xFFFF,
-                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb',
-                RESET_SHORT: 0xFFFE
-            }
-        };
+        // --- CONFIGURAZIONE UUID ---
+        const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
+        const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
+        
+        // Caratteristiche Config
+        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bffff';
+        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
 
         let bleDevice = null;
-        let sensorChar = null;
-        let resetChar = null;
-
+        let gattServer = null;
+        let activeService = null;
+        
+        // Elementi UI
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const logEl = document.getElementById('log');
-        const controls = document.getElementById('controls');
-        const sensorDisplay = document.getElementById('sensorDisplay');
-        const resetStatus = document.getElementById('resetStatus');
-        const modeSelect = document.getElementById('modeSelect');
-        const statusRing = document.getElementById('statusRing');
-
+        const configPanel = document.getElementById('configPanel');
+        const hubPanel = document.getElementById('hubPanel');
+        const sensorGrid = document.getElementById('sensorGrid');
+        
+        // --- LOGGING ---
         function addLog(msg, type = 'info') {
             const entry = document.createElement('div');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : (type === 'warn' ? 'text-yellow-400' : 'text-slate-400'));
-            entry.className = `mb-1 ${color}`;
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : (type === 'rx' ? 'text-cyan-400' : 'text-slate-400'));
+            const prefix = type === 'rx' ? 'RX < ' : (type === 'tx' ? 'TX > ' : '> ');
+            entry.className = `${color}`;
+            entry.textContent = `${prefix}${msg}`;
             logEl.appendChild(entry);
             logEl.scrollTop = logEl.scrollHeight;
         }
 
-        async function connect() {
-            const selectedMode = modeSelect.value;
-            const config = UUIDS[selectedMode];
+        // --- GENERATORE UUID SLOT (HUB MODE) ---
+        // Genera gli UUID EEEE...0010, EEEE...0020 etc.
+        function getHubSlotUUID(index) {
+            const padding = index < 10 ? "00000" : "0000";
+            return `eeee0000-0000-0000-0000-000000${padding}${index}0`;
+        }
 
+        // --- CONNESSIONE PRINCIPALE ---
+        async function connect() {
             try {
-                updateStatusUI('connecting');
-                addLog(`Scansione per Servizio: ${config.SERVICE.split('-')[0]}...`);
-                
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ services: [config.SERVICE] }],
-                    optionalServices: [config.SERVICE]
+                updateStatus('connecting');
+                addLog('Richiesta dispositivo BLE...', 'info');
+
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'ESP32-S3-Hub' }],
+                    // È FONDAMENTALE includere entrambi i servizi opzionali
+                    optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID]
                 });
 
-                bleDevice = device;
-                device.addEventListener('gattserverdisconnected', onDisconnected);
-
-                addLog("Dispositivo trovato. Connessione GATT...");
-                const server = await device.gatt.connect();
-
-                addLog("Accesso al servizio primario...");
-                const service = await server.getPrimaryService(config.SERVICE);
-
-                addLog("Ricerca caratteristiche...");
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
                 
-                // Fallback Logic: Prova UUID lungo, poi UUID corto
-                try {
-                    sensorChar = await service.getCharacteristic(config.SENSORS);
-                } catch (e) {
-                    addLog("UUID Lungo 0xFFFF non trovato, provo short UUID...", 'warn');
-                    sensorChar = await service.getCharacteristic(config.SENSORS_SHORT);
-                }
+                addLog('Connessione GATT...', 'info');
+                gattServer = await bleDevice.gatt.connect();
 
-                try {
-                    resetChar = await service.getCharacteristic(config.RESET);
-                } catch (e) {
-                    addLog("UUID Lungo 0xFFFE non trovato, provo short UUID...", 'warn');
-                    resetChar = await service.getCharacteristic(config.RESET_SHORT);
-                }
-
-                addLog("Caratteristiche identificate correttamente.", 'success');
-
-                if (resetChar.properties.notify) {
-                    await resetChar.startNotifications();
-                    resetChar.addEventListener('characteristicvaluechanged', handleResetNotification);
-                    addLog("Notifiche Reset attivate.");
-                }
-
-                updateUI(true);
-                addLog(`Connesso a: ${device.name || 'Dispositivo'}`, 'success');
+                // Rilevamento Modalità
+                addLog('Rilevamento servizi...', 'info');
+                const services = await gattServer.getPrimaryServices();
                 
-                // Forza una piccola attesa prima della lettura iniziale per stabilità
-                setTimeout(readSensors, 500);
+                let mode = 'UNKNOWN';
+                
+                // Cerchiamo quale servizio è disponibile
+                for (const service of services) {
+                    if (service.uuid === CONFIG_SVC_UUID) {
+                        mode = 'CONFIG';
+                        activeService = service;
+                    } else if (service.uuid === HUB_SVC_UUID) {
+                        mode = 'HUB';
+                        activeService = service;
+                    }
+                }
+
+                if (mode === 'CONFIG') {
+                    await setupConfigMode();
+                } else if (mode === 'HUB') {
+                    await setupHubMode();
+                } else {
+                    throw new Error("Nessun servizio compatibile trovato.");
+                }
+
+                updateStatus('connected', mode);
+                addLog(`Connesso in modalità: ${mode}`, 'success');
 
             } catch (error) {
-                updateStatusUI('disconnected');
-                addLog(`Errore critico: ${error.message}`, 'error');
-                if (error.message.includes('No Characteristics')) {
-                    addLog("Suggerimento: Prova a spegnere/riaccendere il Bluetooth sul telefono per pulire la cache GATT.", 'warn');
-                }
+                console.error(error);
+                addLog(`Errore: ${error.message}`, 'error');
+                updateStatus('disconnected');
             }
         }
 
-        async function readSensors() {
-            if (!sensorChar) return;
+        // --- LOGICA MODALITÀ CONFIGURAZIONE ---
+        async function setupConfigMode() {
+            configPanel.classList.remove('hidden');
+            hubPanel.classList.add('hidden');
+
             try {
-                const value = await sensorChar.readValue();
-                // Gestione dati: prova a decodificare come stringa, se fallisce usa byte
-                let decoded;
-                try {
-                    decoded = new TextDecoder().decode(value);
-                } catch(e) {
-                    decoded = value.getUint8(0).toString();
-                }
+                // Leggi Numero Sensori Attuali
+                const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
+                const value = await countChar.readValue();
+                const count = new TextDecoder().decode(value);
                 
-                sensorDisplay.textContent = decoded;
-                addLog(`Dato Sensori: ${decoded}`);
+                document.getElementById('sensorCountInput').value = count;
+                addLog(`Configurazione letta: ${count} sensori attivi`, 'rx');
+
+                // Setup Listener Reset
+                const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
+                if (resetChar.properties.notify) {
+                    await resetChar.startNotifications();
+                    resetChar.addEventListener('characteristicvaluechanged', (e) => {
+                        const val = new TextDecoder().decode(e.target.value);
+                        if(val === "0") {
+                            document.getElementById('resetFeedback').textContent = "Reset Completato con successo!";
+                            document.getElementById('resetFeedback').className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
+                            addLog("Factory Reset Confermato.", 'success');
+                        }
+                    });
+                }
+
             } catch (e) {
-                addLog(`Errore lettura: ${e.message}`, 'error');
+                addLog("Errore lettura config: " + e.message, 'error');
             }
         }
 
-        async function writeSensors() {
-            const val = document.getElementById('sensorInput').value;
-            if (!val || !sensorChar) return;
+        async function saveSensorCount() {
+            const val = document.getElementById('sensorCountInput').value;
+            if(!val) return;
             try {
-                // Invio come stringa (standard per molti moduli seriali)
-                await sensorChar.writeValue(new TextEncoder().encode(val));
-                addLog(`Comando inviato: ${val}`, 'success');
-                setTimeout(readSensors, 1000); // Rileggi dopo 1s
-            } catch (e) {
-                addLog(`Errore scrittura: ${e.message}`, 'error');
+                const char = await activeService.getCharacteristic(CHAR_COUNT_UUID);
+                addLog(`Salvataggio ${val} sensori...`, 'tx');
+                await char.writeValue(new TextEncoder().encode(val));
+                addLog("Comando inviato. Il dispositivo si riavvierà.", 'success');
+            } catch(e) {
+                addLog("Errore salvataggio: " + e.message, 'error');
             }
         }
 
-        async function factoryReset() {
-            if (!resetChar) return;
-            if (!confirm("ATTENZIONE: Procedere con il Factory Reset?")) return;
+        async function performReset() {
+            if(!confirm("Sei sicuro di voler cancellare TUTTE le configurazioni?")) return;
+            try {
+                const char = await activeService.getCharacteristic(CHAR_RESET_UUID);
+                document.getElementById('resetFeedback').textContent = "Invio richiesta...";
+                await char.writeValue(new TextEncoder().encode("1"));
+                addLog("Richiesta Reset inviata...", 'tx');
+            } catch(e) {
+                addLog("Errore Reset: " + e.message, 'error');
+            }
+        }
+
+        // --- LOGICA MODALITÀ HUB ---
+        async function setupHubMode() {
+            configPanel.classList.add('hidden');
+            hubPanel.classList.remove('hidden');
+            sensorGrid.innerHTML = ''; // Pulisci griglia precedente
 
             try {
-                resetStatus.textContent = "Inviando comando...";
-                await resetChar.writeValue(new TextEncoder().encode("1"));
-                addLog("Reset '1' inviato. In attesa di conferma '0' dal dispositivo...");
-            } catch (e) {
-                addLog("Errore Reset", 'error');
+                const characteristics = await activeService.getCharacteristics();
+                // Filtriamo solo quelle che matchano il pattern dei dati (escludiamo descrittori strani)
+                // In realtà il firmware espone solo quelle giuste nel servizio EEEE.
+                
+                document.getElementById('hubSensorCountBadge').textContent = `${characteristics.length} Sensori`;
+
+                // Creiamo le card per ogni sensore trovato
+                characteristics.forEach((char, index) => {
+                    createSensorCard(index + 1);
+                    
+                    // Avvia notifiche
+                    char.startNotifications().then(() => {
+                        char.addEventListener('characteristicvaluechanged', (e) => {
+                            const val = new TextDecoder().decode(e.target.value);
+                            updateSensorCard(index + 1, val);
+                        });
+                        // Leggi valore iniziale
+                        char.readValue().then(val => {
+                            updateSensorCard(index + 1, new TextDecoder().decode(val));
+                        });
+                    });
+                });
+
+            } catch(e) {
+                addLog("Errore setup Hub: " + e.message, 'error');
             }
         }
 
-        function handleResetNotification(event) {
-            const val = new TextDecoder().decode(event.target.value);
-            addLog(`Notifica ricevuta: ${val}`);
-            if (val.trim() === "0") {
-                resetStatus.textContent = "Reset Completato!";
-                resetStatus.className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
-                addLog("Il dispositivo ha confermato il reset.", 'success');
+        function createSensorCard(id) {
+            const div = document.createElement('div');
+            div.id = `sensor-card-${id}`;
+            div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center";
+            div.innerHTML = `
+                <div>
+                    <div class="text-[10px] text-slate-500 uppercase font-bold">Sensore ${id}</div>
+                    <div id="sensor-val-${id}" class="font-mono text-xl text-white mt-1">--</div>
+                </div>
+                <div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>
+            `;
+            sensorGrid.appendChild(div);
+        }
+
+        function updateSensorCard(id, rawString) {
+            // Formato atteso dal firmware: "Connected, 24.5" oppure "Disconnected" oppure "Not Configured"
+            const card = document.getElementById(`sensor-card-${id}`);
+            const valEl = document.getElementById(`sensor-val-${id}`);
+            const statusEl = document.getElementById(`sensor-status-${id}`);
+
+            if (rawString.includes("Connected,")) {
+                // È connesso con dati
+                const cleanVal = rawString.split(',')[1].trim();
+                valEl.textContent = cleanVal;
+                statusEl.textContent = "ONLINE";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
+                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
+                // addLog(`Sensore ${id}: ${cleanVal}`, 'rx'); // Opzionale: logga dati
+            } else if (rawString.includes("Disconnected")) {
+                valEl.textContent = "--";
+                statusEl.textContent = "OFFLINE";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900";
+                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 flex justify-between items-center opacity-75";
+            } else if (rawString.includes("Not Configured")) {
+                valEl.textContent = "EMPTY";
+                statusEl.textContent = "NO CONFIG";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider";
+                card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
+            }
+        }
+
+
+        // --- UI UTILS ---
+        function updateStatus(state, mode = '') {
+            const statusText = document.getElementById('statusText');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusRing = document.getElementById('statusRing');
+            const modeText = document.getElementById('modeText');
+
+            if (state === 'connecting') {
+                statusText.textContent = "Connessione...";
+                statusRing.classList.remove('hidden');
+                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-blue-500";
+                connectBtn.disabled = true;
+                connectBtn.textContent = "Ricerca in corso...";
+            } else if (state === 'connected') {
+                statusText.textContent = "Connesso";
+                statusText.className = "text-xs font-bold uppercase tracking-tight text-emerald-400";
+                statusRing.classList.add('hidden');
+                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                
+                modeText.textContent = mode === 'CONFIG' ? "MODALITÀ CONFIGURAZIONE" : "MODALITÀ OPERATIVA";
+                modeText.className = mode === 'CONFIG' ? "text-[10px] text-yellow-400 font-bold font-mono" : "text-[10px] text-blue-300 font-bold font-mono";
+
+                connectBtn.classList.add('hidden');
+                disconnectBtn.classList.remove('hidden');
+            } else {
+                statusText.textContent = "Disconnesso";
+                statusText.className = "text-xs font-bold uppercase tracking-tight text-slate-400";
+                statusRing.classList.add('hidden');
+                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-red-500";
+                modeText.textContent = "--";
+                
+                connectBtn.disabled = false;
+                connectBtn.textContent = "📡 Connetti Dispositivo";
+                connectBtn.classList.remove('hidden');
+                disconnectBtn.classList.add('hidden');
+                
+                configPanel.classList.add('hidden');
+                hubPanel.classList.add('hidden');
+                sensorGrid.innerHTML = '';
             }
         }
 
         function onDisconnected() {
-            updateUI(false);
-            addLog("Dispositivo disconnesso dal server.", 'error');
+            updateStatus('disconnected');
+            addLog('Connessione persa.', 'warn');
         }
 
-        function updateStatusUI(state) {
-            const icon = document.getElementById('statusIcon');
-            const text = document.getElementById('statusText');
-            
-            if (state === 'connecting') {
-                statusRing.classList.remove('hidden');
-                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-blue-500';
-                text.textContent = "Connessione...";
-            } else if (state === 'connected') {
-                statusRing.classList.add('hidden');
-                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
-                text.textContent = "Connesso";
-                text.className = 'text-xs font-bold uppercase tracking-tight text-emerald-400';
-            } else {
-                statusRing.classList.add('hidden');
-                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-red-500';
-                text.textContent = "Disconnesso";
-                text.className = 'text-xs font-bold uppercase tracking-tight text-slate-400';
-            }
-        }
-
-        function updateUI(connected) {
-            if (connected) {
-                updateStatusUI('connected');
-                connectBtn.classList.add('hidden');
-                disconnectBtn.classList.remove('hidden');
-                controls.classList.remove('opacity-40', 'pointer-events-none');
-            } else {
-                updateStatusUI('disconnected');
-                connectBtn.classList.remove('hidden');
-                disconnectBtn.classList.add('hidden');
-                controls.classList.add('opacity-40', 'pointer-events-none');
-                sensorDisplay.textContent = "--";
-            }
-        }
-
+        // --- EVENT LISTENERS ---
         connectBtn.addEventListener('click', connect);
-        disconnectBtn.addEventListener('click', () => bleDevice && bleDevice.gatt.disconnect());
-        document.getElementById('setSensorsBtn').addEventListener('click', writeSensors);
-        document.getElementById('refreshSensorsBtn').addEventListener('click', readSensors);
-        document.getElementById('resetBtn').addEventListener('click', factoryReset);
-        document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '');
+        disconnectBtn.addEventListener('click', () => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
+        document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
+        document.getElementById('resetBtn').addEventListener('click', performReset);
+        document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '<div class="text-slate-600 italic">> Log pulito.</div>');
+
     </script>
 </body>
 </html>
