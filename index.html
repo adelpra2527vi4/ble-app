@@ -49,11 +49,11 @@
 
     <!-- UI: CONFIG MODE (DDDD) -->
     <main id="configPanel" class="hidden space-y-4">
-        <!-- Sensor Count -->
+        <!-- Sensor Count & Global Settings -->
         <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-blue-400 mb-3 uppercase tracking-widest">Configurazione Sistema</h2>
+            <h2 class="text-xs font-bold text-blue-400 mb-3 uppercase tracking-widest">Impostazioni Sistema</h2>
             <div class="flex items-center justify-between gap-4">
-                <label class="text-sm text-slate-300">Sensori Attivi:</label>
+                <label class="text-sm text-slate-300">Numero Sensori:</label>
                 <div class="flex items-center gap-2">
                     <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
                     <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
@@ -62,8 +62,13 @@
             <p class="text-[10px] text-slate-500 mt-2 italic">* Il dispositivo si riavvierà al salvataggio.</p>
         </div>
 
+        <!-- Dynamic Slots Container -->
+        <div id="configSlotsContainer" class="space-y-4">
+            <!-- Gli slot verranno generati qui via JS -->
+        </div>
+
         <!-- Factory Reset -->
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30">
+        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
             <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
             <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
                 ⚠️ Factory Reset
@@ -81,16 +86,7 @@
         
         <!-- Grid dinamica generata via JS -->
         <div id="sensorGrid" class="grid grid-cols-1 gap-3">
-            <!-- Esempio Card (Verranno create dinamicamente) -->
-            <!-- 
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
-                <div>
-                    <div class="text-[10px] text-slate-500 uppercase">Sensore 1</div>
-                    <div class="font-mono text-xl text-white">24.5 °C</div>
-                </div>
-                <div class="text-xs px-2 py-1 rounded bg-emerald-900 text-emerald-400">Connected</div>
-            </div> 
-            -->
+            <!-- Cards sensori -->
         </div>
     </main>
 
@@ -125,6 +121,7 @@
         const configPanel = document.getElementById('configPanel');
         const hubPanel = document.getElementById('hubPanel');
         const sensorGrid = document.getElementById('sensorGrid');
+        const configSlotsContainer = document.getElementById('configSlotsContainer');
         
         // --- LOGGING ---
         function addLog(msg, type = 'info') {
@@ -137,11 +134,13 @@
             logEl.scrollTop = logEl.scrollHeight;
         }
 
-        // --- GENERATORE UUID SLOT (HUB MODE) ---
-        // Genera gli UUID EEEE...0010, EEEE...0020 etc.
-        function getHubSlotUUID(index) {
+        // --- GENERATORE UUID (Config Mode) ---
+        // Genera gli UUID per scrivere/leggere le configurazioni dei singoli sensori
+        // index: 1-based (1, 2, 3...)
+        // type: 0 per Service UUID, 1 per Characteristic UUID
+        function getConfigSlotUUID(index, type) {
             const padding = index < 10 ? "00000" : "0000";
-            return `eeee0000-0000-0000-0000-000000${padding}${index}0`;
+            return `00000000-0000-0000-0000-000000${padding}${index}${type}`;
         }
 
         // --- CONNESSIONE PRINCIPALE ---
@@ -152,7 +151,6 @@
 
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'ESP32-S3-Hub' }],
-                    // È FONDAMENTALE includere entrambi i servizi opzionali
                     optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID]
                 });
 
@@ -161,13 +159,11 @@
                 addLog('Connessione GATT...', 'info');
                 gattServer = await bleDevice.gatt.connect();
 
-                // Rilevamento Modalità
                 addLog('Rilevamento servizi...', 'info');
                 const services = await gattServer.getPrimaryServices();
                 
                 let mode = 'UNKNOWN';
                 
-                // Cerchiamo quale servizio è disponibile
                 for (const service of services) {
                     if (service.uuid === CONFIG_SVC_UUID) {
                         mode = 'CONFIG';
@@ -196,38 +192,111 @@
             }
         }
 
-        // --- LOGICA MODALITÀ CONFIGURAZIONE ---
+        // --- MODALITÀ CONFIGURAZIONE ---
         async function setupConfigMode() {
             configPanel.classList.remove('hidden');
             hubPanel.classList.add('hidden');
+            configSlotsContainer.innerHTML = ''; // Pulisci slot precedenti
 
             try {
-                // Leggi Numero Sensori Attuali
+                // 1. Leggi Numero Sensori
                 const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
                 const value = await countChar.readValue();
-                const count = new TextDecoder().decode(value);
+                const count = parseInt(new TextDecoder().decode(value));
                 
                 document.getElementById('sensorCountInput').value = count;
-                addLog(`Configurazione letta: ${count} sensori attivi`, 'rx');
+                addLog(`Sistema configurato per ${count} sensori.`, 'rx');
 
-                // Setup Listener Reset
+                // 2. Genera UI per ogni sensore
+                for (let i = 1; i <= count; i++) {
+                    createConfigSlot(i);
+                    // Leggi valori attuali (Async per non bloccare UI)
+                    readConfigSlotValues(i); 
+                }
+
+                // 3. Setup Listener Reset
                 const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
                 if (resetChar.properties.notify) {
                     await resetChar.startNotifications();
                     resetChar.addEventListener('characteristicvaluechanged', (e) => {
                         const val = new TextDecoder().decode(e.target.value);
                         if(val === "0") {
-                            document.getElementById('resetFeedback').textContent = "Reset Completato con successo!";
+                            document.getElementById('resetFeedback').textContent = "Reset Completato!";
                             document.getElementById('resetFeedback').className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
                             addLog("Factory Reset Confermato.", 'success');
+                            // Pulisci input
+                            const inputs = document.querySelectorAll('input[type="text"]');
+                            inputs.forEach(input => input.value = '');
                         }
                     });
                 }
 
             } catch (e) {
-                addLog("Errore lettura config: " + e.message, 'error');
+                addLog("Errore config: " + e.message, 'error');
             }
         }
+
+        function createConfigSlot(index) {
+            const div = document.createElement('div');
+            div.className = "bg-slate-800 rounded-xl p-4 border border-slate-700 relative";
+            div.innerHTML = `
+                <div class="absolute top-2 right-3 text-[10px] font-bold text-slate-600">SLOT ${index}</div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[10px] text-blue-300 uppercase font-bold">Service UUID</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="svc-uuid-${index}" placeholder="Es: 0000180d..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
+                            <button onclick="saveSlotUUID(${index}, 0)" class="bg-slate-700 hover:bg-blue-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-indigo-300 uppercase font-bold">Char UUID</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="char-uuid-${index}" placeholder="Es: 00002a37..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
+                            <button onclick="saveSlotUUID(${index}, 1)" class="bg-slate-700 hover:bg-indigo-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            configSlotsContainer.appendChild(div);
+        }
+
+        async function readConfigSlotValues(index) {
+            try {
+                // Leggi Service UUID (Type 0)
+                const svcCharUUID = getConfigSlotUUID(index, 0);
+                const svcChar = await activeService.getCharacteristic(svcCharUUID);
+                const svcVal = await svcChar.readValue();
+                document.getElementById(`svc-uuid-${index}`).value = new TextDecoder().decode(svcVal);
+
+                // Leggi Char UUID (Type 1)
+                const charCharUUID = getConfigSlotUUID(index, 1);
+                const charChar = await activeService.getCharacteristic(charCharUUID);
+                const charVal = await charChar.readValue();
+                document.getElementById(`char-uuid-${index}`).value = new TextDecoder().decode(charVal);
+            } catch(e) {
+                console.log(`Slot ${index} empty or read error`);
+            }
+        }
+
+        // Funzione globale per i bottoni save
+        window.saveSlotUUID = async function(index, type) {
+            const inputId = type === 0 ? `svc-uuid-${index}` : `char-uuid-${index}`;
+            const val = document.getElementById(inputId).value.trim();
+            const typeName = type === 0 ? "Service" : "Characteristic";
+            
+            if(!val) return alert("Inserisci un UUID valido");
+
+            try {
+                const uuid = getConfigSlotUUID(index, type);
+                const char = await activeService.getCharacteristic(uuid);
+                addLog(`Slot ${index}: Scrittura ${typeName}...`, 'tx');
+                await char.writeValue(new TextEncoder().encode(val));
+                addLog(`Slot ${index}: Salvato OK`, 'success');
+            } catch(e) {
+                addLog(`Errore Salvataggio Slot ${index}: ${e.message}`, 'error');
+            }
+        };
 
         async function saveSensorCount() {
             const val = document.getElementById('sensorCountInput').value;
@@ -237,6 +306,8 @@
                 addLog(`Salvataggio ${val} sensori...`, 'tx');
                 await char.writeValue(new TextEncoder().encode(val));
                 addLog("Comando inviato. Il dispositivo si riavvierà.", 'success');
+                // Disabilita UI per evitare conflitti durante il reboot
+                setTimeout(() => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); }, 1500);
             } catch(e) {
                 addLog("Errore salvataggio: " + e.message, 'error');
             }
@@ -254,36 +325,28 @@
             }
         }
 
-        // --- LOGICA MODALITÀ HUB ---
+        // --- MODALITÀ HUB ---
         async function setupHubMode() {
             configPanel.classList.add('hidden');
             hubPanel.classList.remove('hidden');
-            sensorGrid.innerHTML = ''; // Pulisci griglia precedente
+            sensorGrid.innerHTML = '';
 
             try {
                 const characteristics = await activeService.getCharacteristics();
-                // Filtriamo solo quelle che matchano il pattern dei dati (escludiamo descrittori strani)
-                // In realtà il firmware espone solo quelle giuste nel servizio EEEE.
-                
                 document.getElementById('hubSensorCountBadge').textContent = `${characteristics.length} Sensori`;
 
-                // Creiamo le card per ogni sensore trovato
                 characteristics.forEach((char, index) => {
                     createSensorCard(index + 1);
-                    
-                    // Avvia notifiche
                     char.startNotifications().then(() => {
                         char.addEventListener('characteristicvaluechanged', (e) => {
                             const val = new TextDecoder().decode(e.target.value);
                             updateSensorCard(index + 1, val);
                         });
-                        // Leggi valore iniziale
                         char.readValue().then(val => {
                             updateSensorCard(index + 1, new TextDecoder().decode(val));
                         });
                     });
                 });
-
             } catch(e) {
                 addLog("Errore setup Hub: " + e.message, 'error');
             }
@@ -304,19 +367,16 @@
         }
 
         function updateSensorCard(id, rawString) {
-            // Formato atteso dal firmware: "Connected, 24.5" oppure "Disconnected" oppure "Not Configured"
             const card = document.getElementById(`sensor-card-${id}`);
             const valEl = document.getElementById(`sensor-val-${id}`);
             const statusEl = document.getElementById(`sensor-status-${id}`);
 
             if (rawString.includes("Connected,")) {
-                // È connesso con dati
                 const cleanVal = rawString.split(',')[1].trim();
                 valEl.textContent = cleanVal;
                 statusEl.textContent = "ONLINE";
                 statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
                 card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
-                // addLog(`Sensore ${id}: ${cleanVal}`, 'rx'); // Opzionale: logga dati
             } else if (rawString.includes("Disconnected")) {
                 valEl.textContent = "--";
                 statusEl.textContent = "OFFLINE";
@@ -329,7 +389,6 @@
                 card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
             }
         }
-
 
         // --- UI UTILS ---
         function updateStatus(state, mode = '') {
@@ -370,6 +429,7 @@
                 configPanel.classList.add('hidden');
                 hubPanel.classList.add('hidden');
                 sensorGrid.innerHTML = '';
+                configSlotsContainer.innerHTML = '';
             }
         }
 
@@ -378,13 +438,11 @@
             addLog('Connessione persa.', 'warn');
         }
 
-        // --- EVENT LISTENERS ---
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', () => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
         document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
         document.getElementById('resetBtn').addEventListener('click', performReset);
         document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '<div class="text-slate-600 italic">> Log pulito.</div>');
-
     </script>
 </body>
 </html>
