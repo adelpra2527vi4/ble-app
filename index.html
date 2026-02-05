@@ -169,6 +169,8 @@
 
                 for (let i = 1; i <= count; i++) {
                     createConfigSlot(i);
+                    // Attendiamo un po' tra una lettura e l'altra per Android
+                    await new Promise(r => setTimeout(r, 50));
                     readConfigSlotValues(i); 
                 }
 
@@ -235,7 +237,6 @@
                 if(charStr) charInput.value = charStr;
                 else charInput.placeholder = "Empty";
                 
-                // addLog(`Slot ${index}: Dati caricati.`, 'rx');
             } catch(e) {
                 console.log(`Slot ${index}: Impossibile leggere valori.`);
                 svcInput.placeholder = "Error/NoData";
@@ -278,6 +279,7 @@
             } catch(e) { addLog("Err Reset: " + e.message, 'error'); }
         }
 
+        // --- CORREZIONE ANDROID: ESECUZIONE SEQUENZIALE ---
         async function setupHubMode() {
             configPanel.classList.add('hidden');
             hubPanel.classList.remove('hidden');
@@ -287,16 +289,37 @@
                 const characteristics = await activeService.getCharacteristics();
                 document.getElementById('hubSensorCountBadge').textContent = `${characteristics.length} Sensori`;
 
+                // Creiamo prima tutte le card vuote (feedback immediato)
                 characteristics.forEach((char, index) => {
                     createSensorCard(index + 1);
-                    char.startNotifications().then(() => {
+                });
+
+                // Attiviamo le notifiche UNO ALLA VOLTA per non intasare lo stack Android
+                for (let i = 0; i < characteristics.length; i++) {
+                    const char = characteristics[i];
+                    const index = i;
+
+                    try {
+                        addLog(`Init Sensor ${index + 1}...`, 'info');
+                        
+                        await char.startNotifications();
                         char.addEventListener('characteristicvaluechanged', (e) => {
                             const val = new TextDecoder().decode(e.target.value);
                             updateSensorCard(index + 1, val);
                         });
-                        char.readValue().then(val => { updateSensorCard(index + 1, new TextDecoder().decode(val)); });
-                    });
-                });
+                        
+                        // Leggiamo il valore iniziale
+                        const val = await char.readValue();
+                        updateSensorCard(index + 1, new TextDecoder().decode(val));
+
+                        // Piccolo delay per dare respiro allo stack BLE Android
+                        await new Promise(r => setTimeout(r, 100));
+
+                    } catch (err) {
+                        addLog(`Err Sensor ${index + 1}: ${err.message}`, 'error');
+                        // Continuiamo con il prossimo anche se questo fallisce
+                    }
+                }
             } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
         }
 
