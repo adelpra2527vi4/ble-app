@@ -3,227 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE Web Controller</title>
+    <title>BLE Professional Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .status-connected { color: #10b981; }
-        .status-disconnected { color: #ef4444; }
-        .log-container { font-family: monospace; font-size: 0.8rem; }
+        .log-container { font-family: monospace; font-size: 0.75rem; scroll-behavior: smooth; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4">
 
     <!-- Header -->
-    <header class="text-center mb-8 pt-4">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            BLE Terminal
+    <header class="text-center mb-6 pt-2">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            BLE Hub Controller
         </h1>
-        <p class="text-slate-400 text-sm mt-2">Controllo dispositivi tramite Web Bluetooth</p>
     </header>
 
-    <!-- Error Banner (Hidden by default) -->
-    <div id="browserWarning" class="hidden bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm">
-        <p class="font-bold">Attenzione!</p>
-        <p id="warningMessage">Il tuo browser non sembra supportare il Web Bluetooth o l'accesso è negato.</p>
+    <!-- Error Banner -->
+    <div id="browserWarning" class="hidden bg-red-900/40 border border-red-500 text-red-200 p-3 rounded-xl mb-4 text-xs">
+        <p class="font-bold">Errore di Compatibilità</p>
+        <p id="warningMessage"></p>
     </div>
 
-    <!-- Connection Card -->
-    <div class="bg-slate-800 rounded-2xl p-6 shadow-xl mb-6 border border-slate-700">
+    <!-- Connection & Mode Switcher -->
+    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
         <div class="flex items-center justify-between mb-4">
-            <span id="statusIcon" class="w-3 h-3 rounded-full bg-red-500"></span>
-            <span id="statusText" class="text-sm font-medium uppercase tracking-wider text-slate-300">Disconnesso</span>
+            <div class="flex items-center gap-2">
+                <span id="statusIcon" class="w-3 h-3 rounded-full bg-red-500"></span>
+                <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
+            </div>
+            <select id="modeSelect" class="bg-slate-900 text-xs border border-slate-600 rounded-lg px-2 py-1 focus:outline-none">
+                <option value="CONFIG">Mod. Configurazione</option>
+                <option value="HUB">Mod. Operativa</option>
+            </select>
         </div>
         
-        <div class="flex gap-2">
-            <button id="connectBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 transition-colors py-3 rounded-xl font-bold flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+            Connetti Dispositivo
+        </button>
+        <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
+            Scollega
+        </button>
+    </div>
+
+    <!-- Main Controls -->
+    <main id="controls" class="opacity-40 pointer-events-none flex-1">
+        <!-- Sensor Count Section -->
+        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
+            <h2 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-widest">Sensori Attivi</h2>
+            <div class="flex items-center gap-3">
+                <div id="sensorDisplay" class="bg-slate-900 text-emerald-400 font-mono text-2xl w-16 h-12 flex items-center justify-center rounded-xl border border-slate-700">
+                    --
+                </div>
+                <div class="flex-1 flex gap-2">
+                    <input id="sensorInput" type="number" placeholder="Es: 4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
+                    <button id="setSensorsBtn" class="bg-blue-600 px-4 rounded-xl font-bold text-sm">SET</button>
+                </div>
+            </div>
+            <button id="refreshSensorsBtn" class="w-full mt-3 text-slate-400 text-xs py-1 hover:text-white transition-colors uppercase font-semibold">
+                🔄 Leggi Stato Attuale
+            </button>
+        </div>
+
+        <!-- Factory Reset Section -->
+        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
+            <h2 class="text-xs font-bold text-red-400/80 mb-3 uppercase tracking-widest">Manutenzione</h2>
+            <button id="resetBtn" class="w-full bg-red-600/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                Connetti
+                Factory Reset
             </button>
-            <button id="disconnectBtn" class="hidden flex-1 bg-slate-700 hover:bg-slate-600 transition-colors py-3 rounded-xl font-bold">
-                Disconnetti
-            </button>
+            <p id="resetStatus" class="text-[10px] text-center mt-2 text-slate-500 italic">Pronto</p>
         </div>
-        <p id="deviceName" class="mt-4 text-center text-xs text-slate-500"></p>
-    </div>
+    </main>
 
-    <!-- Actions (Read/Write) -->
-    <div id="controls" class="opacity-50 pointer-events-none transition-opacity duration-300">
-        <!-- Write Section -->
-        <div class="bg-slate-800 rounded-2xl p-6 shadow-xl mb-6 border border-slate-700">
-            <h2 class="text-sm font-bold text-slate-400 mb-4 uppercase">Invia Comando</h2>
-            <div class="flex gap-2">
-                <input id="commandInput" type="text" placeholder="Es: LED_ON" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500">
-                <button id="writeBtn" class="bg-emerald-600 hover:bg-emerald-700 px-6 rounded-xl font-bold">Invia</button>
-            </div>
+    <!-- System Log -->
+    <div class="mt-4">
+        <div class="flex justify-between items-center mb-1">
+            <span class="text-[10px] font-bold text-slate-600 uppercase">Log Attività</span>
+            <button id="clearLog" class="text-[10px] text-blue-500">Pulisci</button>
         </div>
-
-        <!-- Read Section -->
-        <div class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700">
-            <h2 class="text-sm font-bold text-slate-400 mb-4 uppercase">Dati Ricevuti</h2>
-            <div class="text-2xl font-mono text-emerald-400 text-center py-4 bg-slate-900 rounded-xl border border-slate-700" id="readValue">
-                ---
-            </div>
-            <button id="readBtn" class="w-full mt-4 text-blue-400 text-sm hover:underline">Leggi manuale</button>
-        </div>
-    </div>
-
-    <!-- Console Log -->
-    <div class="mt-auto pt-6">
-        <h2 class="text-xs font-bold text-slate-500 mb-2 uppercase">Log Sistema</h2>
-        <div id="log" class="log-container bg-black rounded-xl p-4 h-32 overflow-y-auto text-slate-400 border border-slate-800">
-            Benvenuto. Caricamento sistema...
+        <div id="log" class="log-container bg-black/50 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-relaxed">
+            In attesa di connessione...
         </div>
     </div>
 
     <script>
-        // Configurazione UUID
-        const SERVICE_UUID = '0000180f-0000-1000-8000-00805f9b34fb'; // Battery Service
-        const CHAR_UUID    = '00002a19-0000-1000-8000-00805f9b34fb'; // Battery Level
+        // UUID CONFIGURATION DALLE TUE SPECIFICHE
+        const UUIDS = {
+            CONFIG: {
+                SERVICE: 'dddd0001-0000-1000-8000-00805f9b34fb',
+                SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
+                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb'
+            },
+            HUB: {
+                SERVICE: 'eeee0001-0000-1000-8000-00805f9b34fb',
+                SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
+                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb'
+            }
+        };
 
         let bleDevice = null;
-        let bleCharacteristic = null;
+        let sensorChar = null;
+        let resetChar = null;
 
+        // UI Elements
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const logEl = document.getElementById('log');
-        const statusIcon = document.getElementById('statusIcon');
-        const statusText = document.getElementById('statusText');
         const controls = document.getElementById('controls');
-        const readValue = document.getElementById('readValue');
-        const browserWarning = document.getElementById('browserWarning');
+        const sensorDisplay = document.getElementById('sensorDisplay');
+        const resetStatus = document.getElementById('resetStatus');
+        const modeSelect = document.getElementById('modeSelect');
 
-        function addLog(msg) {
+        function addLog(msg, type = 'info') {
             const entry = document.createElement('div');
-            entry.textContent = `> ${msg}`;
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-400');
+            entry.className = `mb-1 ${color}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
             logEl.appendChild(entry);
             logEl.scrollTop = logEl.scrollHeight;
         }
 
-        // Controllo compatibilità al caricamento
         window.onload = () => {
             if (!navigator.bluetooth) {
-                browserWarning.classList.remove('hidden');
-                document.getElementById('warningMessage').textContent = "Il tuo browser o il sito corrente non supportano le API Bluetooth. Assicurati di usare Chrome su HTTPS.";
+                document.getElementById('browserWarning').classList.remove('hidden');
+                document.getElementById('warningMessage').textContent = "Web Bluetooth non supportato. Usa Chrome su Android tramite HTTPS.";
                 connectBtn.disabled = true;
-                connectBtn.classList.add('opacity-50');
-                addLog("ERRORE: Web Bluetooth non disponibile.");
-            } else {
-                addLog("Sistema pronto. Clicca 'Connetti'.");
+                connectBtn.style.opacity = "0.5";
             }
         };
 
-        async function onConnectClick() {
+        async function connect() {
+            const selectedMode = modeSelect.value;
+            const config = UUIDS[selectedMode];
+
             try {
-                addLog("Apertura selettore Bluetooth...");
-                
-                // Nota: requestDevice DEVE essere chiamato a seguito di un gesto utente (click)
+                addLog(`Ricerca dispositivo (${selectedMode})...`);
                 const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [SERVICE_UUID]
+                    filters: [{ services: [config.SERVICE] }],
+                    optionalServices: [config.SERVICE]
                 });
 
                 bleDevice = device;
-                addLog(`Dispositivo selezionato: ${device.name || 'Senza nome'}`);
-                
                 device.addEventListener('gattserverdisconnected', onDisconnected);
 
-                addLog("Connessione GATT...");
+                addLog("Connessione in corso...");
                 const server = await device.gatt.connect();
 
-                addLog("Ricerca servizio...");
-                const service = await server.getPrimaryService(SERVICE_UUID);
+                addLog("Accesso al servizio...");
+                const service = await server.getPrimaryService(config.SERVICE);
 
-                addLog("Ricerca caratteristica...");
-                bleCharacteristic = await service.getCharacteristic(CHAR_UUID);
+                addLog("Configurazione caratteristiche...");
+                sensorChar = await service.getCharacteristic(config.SENSORS);
+                resetChar = await service.getCharacteristic(config.RESET);
 
-                if (bleCharacteristic.properties.notify) {
-                    await bleCharacteristic.startNotifications();
-                    bleCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
-                    addLog("Notifiche attivate.");
+                // Setup Notifiche per Reset
+                if (resetChar.properties.notify) {
+                    await resetChar.startNotifications();
+                    resetChar.addEventListener('characteristicvaluechanged', handleResetNotification);
+                    addLog("Notifiche Reset attivate", 'success');
                 }
 
                 updateUI(true);
-                addLog("Connessione stabilita!");
+                addLog(`Connesso a ${device.name}`, 'success');
+                readSensors(); // Lettura iniziale
 
             } catch (error) {
-                if (error.name === 'SecurityError') {
-                    addLog("ERRORE SICUREZZA: L'accesso è bloccato. Se sei in un'anteprima, prova ad aprire l'URL direttamente nel browser.");
-                } else {
-                    addLog(`Errore: ${error.message}`);
-                }
-                console.error(error);
+                addLog(`Errore: ${error.message}`, 'error');
             }
         }
 
-        function handleNotifications(event) {
-            const value = event.target.value;
-            // Esempio per lettura batteria (Uint8)
-            const result = value.getUint8(0);
-            readValue.textContent = result;
-            addLog(`Notifica: ${result}`);
-        }
-
-        async function onWriteClick() {
-            if (!bleCharacteristic) return;
-            const val = document.getElementById('commandInput').value;
+        async function readSensors() {
+            if (!sensorChar) return;
             try {
-                const encoder = new TextEncoder();
-                await bleCharacteristic.writeValue(encoder.encode(val));
-                addLog(`Scrittura: ${val}`);
-            } catch (error) {
-                addLog(`Errore scrittura: ${error.message}`);
+                const value = await sensorChar.readValue();
+                const count = new TextDecoder().decode(value);
+                sensorDisplay.textContent = count;
+                addLog(`Numero sensori letto: ${count}`);
+            } catch (e) {
+                addLog("Errore lettura sensori", 'error');
             }
         }
 
-        async function onReadClick() {
-            if (!bleCharacteristic) return;
+        async function writeSensors() {
+            const val = document.getElementById('sensorInput').value;
+            if (!val || !sensorChar) return;
             try {
-                const value = await bleCharacteristic.readValue();
-                // Esempio per valore numerico o stringa
-                const val = value.getUint8(0);
-                readValue.textContent = val;
-                addLog(`Letto: ${val}`);
-            } catch (error) {
-                addLog(`Errore lettura: ${error.message}`);
+                await sensorChar.writeValue(new TextEncoder().encode(val));
+                addLog(`Impostato a ${val}. Riavvio dispositivo...`, 'success');
+                sensorDisplay.textContent = val;
+            } catch (e) {
+                addLog("Errore scrittura", 'error');
+            }
+        }
+
+        async function factoryReset() {
+            if (!resetChar) return;
+            if (!confirm("Sei sicuro? Questa azione cancellerà tutti i dati.")) return;
+
+            try {
+                resetStatus.textContent = "Reset in corso...";
+                resetStatus.className = "text-[10px] text-center mt-2 text-yellow-500 animate-pulse";
+                await resetChar.writeValue(new TextEncoder().encode("1"));
+                addLog("Comando Reset inviato. In attesa di conferma...");
+            } catch (e) {
+                addLog("Errore comando reset", 'error');
+                resetStatus.textContent = "Errore";
+            }
+        }
+
+        function handleResetNotification(event) {
+            const val = new TextDecoder().decode(event.target.value);
+            if (val === "0") {
+                resetStatus.textContent = "Reset Completato!";
+                resetStatus.className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
+                addLog("Notifica: Factory Reset completato correttamente", 'success');
             }
         }
 
         function onDisconnected() {
             updateUI(false);
-            addLog("Dispositivo disconnesso.");
+            addLog("Dispositivo disconnesso", 'error');
         }
 
-        function updateUI(isConnected) {
-            if (isConnected) {
-                statusIcon.className = 'w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
-                statusText.textContent = "Connesso";
-                statusText.className = 'text-sm font-medium uppercase tracking-wider text-emerald-400';
+        function updateUI(connected) {
+            if (connected) {
                 connectBtn.classList.add('hidden');
                 disconnectBtn.classList.remove('hidden');
-                controls.classList.remove('opacity-50', 'pointer-events-none');
-                document.getElementById('deviceName').textContent = bleDevice.name || 'Dispositivo connesso';
+                controls.classList.remove('opacity-40', 'pointer-events-none');
+                document.getElementById('statusIcon').classList.replace('bg-red-500', 'bg-emerald-500');
+                document.getElementById('statusText').textContent = "Online";
+                document.getElementById('statusText').classList.replace('text-slate-400', 'text-emerald-400');
             } else {
-                statusIcon.className = 'w-3 h-3 rounded-full bg-red-500';
-                statusText.textContent = "Disconnesso";
-                statusText.className = 'text-sm font-medium uppercase tracking-wider text-slate-300';
                 connectBtn.classList.remove('hidden');
                 disconnectBtn.classList.add('hidden');
-                controls.classList.add('opacity-50', 'pointer-events-none');
-                document.getElementById('deviceName').textContent = '';
+                controls.classList.add('opacity-40', 'pointer-events-none');
+                document.getElementById('statusIcon').classList.replace('bg-emerald-500', 'bg-red-500');
+                document.getElementById('statusText').textContent = "Disconnesso";
+                document.getElementById('statusText').classList.replace('text-emerald-400', 'text-slate-400');
+                sensorDisplay.textContent = "--";
             }
         }
 
-        connectBtn.addEventListener('click', onConnectClick);
-        disconnectBtn.addEventListener('click', () => {
-            if (bleDevice && bleDevice.gatt.connected) {
-                bleDevice.gatt.disconnect();
-            }
-        });
-        document.getElementById('writeBtn').addEventListener('click', onWriteClick);
-        document.getElementById('readBtn').addEventListener('click', onReadClick);
-
+        // Listeners
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', () => bleDevice.gatt.disconnect());
+        document.getElementById('setSensorsBtn').addEventListener('click', writeSensors);
+        document.getElementById('refreshSensorsBtn').addEventListener('click', readSensors);
+        document.getElementById('resetBtn').addEventListener('click', factoryReset);
+        document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '');
+        
     </script>
 </body>
 </html>
