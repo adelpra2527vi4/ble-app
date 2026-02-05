@@ -140,7 +140,10 @@
         // type: 0 per Service UUID, 1 per Characteristic UUID
         function getConfigSlotUUID(index, type) {
             const padding = index < 10 ? "00000" : "0000";
-            return `00000000-0000-0000-0000-000000${padding}${index}${type}`;
+            // CORREZIONE: Rimossa uno zero dalla stringa base per rispettare la lunghezza 128 bit
+            // Prima: 000000... (6 zeri) + padding(5) + idx + type = 13 cifre -> INVALIDO
+            // Ora:   00000... (5 zeri) + padding(5) + idx + type = 12 cifre -> VALIDO
+            return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
         }
 
         // --- CONNESSIONE PRINCIPALE ---
@@ -275,7 +278,7 @@
                 const charVal = await charChar.readValue();
                 document.getElementById(`char-uuid-${index}`).value = new TextDecoder().decode(charVal);
             } catch(e) {
-                console.log(`Slot ${index} empty or read error`);
+                console.log(`Slot ${index} empty o errore lettura. UUID: ${getConfigSlotUUID(index, 0)}`);
             }
         }
 
