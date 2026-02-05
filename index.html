@@ -8,6 +8,8 @@
     <style>
         .log-container { font-family: monospace; font-size: 0.75rem; scroll-behavior: smooth; }
         .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
+        .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4">
@@ -21,7 +23,7 @@
 
     <!-- Error Banner -->
     <div id="browserWarning" class="hidden bg-red-900/40 border border-red-500 text-red-200 p-3 rounded-xl mb-4 text-xs">
-        <p class="font-bold">Errore di Compatibilità</p>
+        <p class="font-bold">Stato Sistema</p>
         <p id="warningMessage"></p>
     </div>
 
@@ -29,16 +31,19 @@
     <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
-                <span id="statusIcon" class="w-3 h-3 rounded-full bg-red-500"></span>
+                <div class="relative flex items-center justify-center w-3 h-3">
+                    <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
+                    <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
+                </div>
                 <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
             </div>
             <select id="modeSelect" class="bg-slate-900 text-xs border border-slate-600 rounded-lg px-2 py-1 focus:outline-none">
-                <option value="CONFIG">Mod. Configurazione</option>
-                <option value="HUB">Mod. Operativa</option>
+                <option value="CONFIG">Mod. Configurazione (DDDD)</option>
+                <option value="HUB">Mod. Operativa (EEEE)</option>
             </select>
         </div>
         
-        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95">
             Connetti Dispositivo
         </button>
         <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
@@ -47,7 +52,7 @@
     </div>
 
     <!-- Main Controls -->
-    <main id="controls" class="opacity-40 pointer-events-none flex-1">
+    <main id="controls" class="opacity-40 pointer-events-none flex-1 transition-opacity duration-500">
         <!-- Sensor Count Section -->
         <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
             <h2 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-widest">Sensori Attivi</h2>
@@ -57,24 +62,21 @@
                 </div>
                 <div class="flex-1 flex gap-2">
                     <input id="sensorInput" type="number" placeholder="Es: 4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
-                    <button id="setSensorsBtn" class="bg-blue-600 px-4 rounded-xl font-bold text-sm">SET</button>
+                    <button id="setSensorsBtn" class="bg-blue-600 px-4 rounded-xl font-bold text-sm hover:bg-blue-500">SET</button>
                 </div>
             </div>
             <button id="refreshSensorsBtn" class="w-full mt-3 text-slate-400 text-xs py-1 hover:text-white transition-colors uppercase font-semibold">
-                🔄 Leggi Stato Attuale
+                🔄 Aggiorna Lettura
             </button>
         </div>
 
         <!-- Factory Reset Section -->
         <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-red-400/80 mb-3 uppercase tracking-widest">Manutenzione</h2>
-            <button id="resetBtn" class="w-full bg-red-600/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+            <h2 class="text-xs font-bold text-red-400/80 mb-3 uppercase tracking-widest text-center">Area Pericolosa</h2>
+            <button id="resetBtn" class="w-full bg-red-600/10 border border-red-600/30 hover:bg-red-600 hover:text-white text-red-500 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
                 Factory Reset
             </button>
-            <p id="resetStatus" class="text-[10px] text-center mt-2 text-slate-500 italic">Pronto</p>
+            <p id="resetStatus" class="text-[10px] text-center mt-2 text-slate-500 italic">Il comando invierà "1" e attenderà "0"</p>
         </div>
     </main>
 
@@ -84,23 +86,27 @@
             <span class="text-[10px] font-bold text-slate-600 uppercase">Log Attività</span>
             <button id="clearLog" class="text-[10px] text-blue-500">Pulisci</button>
         </div>
-        <div id="log" class="log-container bg-black/50 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-relaxed">
-            In attesa di connessione...
+        <div id="log" class="log-container bg-black/50 rounded-xl p-3 h-40 overflow-y-auto text-slate-400 border border-slate-800 leading-relaxed">
+            In attesa di azione utente...
         </div>
     </div>
 
     <script>
-        // UUID CONFIGURATION DALLE TUE SPECIFICHE
+        // UUID CONFIGURATION
         const UUIDS = {
             CONFIG: {
                 SERVICE: 'dddd0001-0000-1000-8000-00805f9b34fb',
                 SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
-                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb'
+                SENSORS_SHORT: 0xFFFF, // Fallback short UUID
+                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb',
+                RESET_SHORT: 0xFFFE
             },
             HUB: {
                 SERVICE: 'eeee0001-0000-1000-8000-00805f9b34fb',
                 SENSORS: '0000ffff-0000-1000-8000-00805f9b34fb',
-                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb'
+                SENSORS_SHORT: 0xFFFF,
+                RESET:   '0000fffe-0000-1000-8000-00805f9b34fb',
+                RESET_SHORT: 0xFFFE
             }
         };
 
@@ -108,7 +114,6 @@
         let sensorChar = null;
         let resetChar = null;
 
-        // UI Elements
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const logEl = document.getElementById('log');
@@ -116,31 +121,25 @@
         const sensorDisplay = document.getElementById('sensorDisplay');
         const resetStatus = document.getElementById('resetStatus');
         const modeSelect = document.getElementById('modeSelect');
+        const statusRing = document.getElementById('statusRing');
 
         function addLog(msg, type = 'info') {
             const entry = document.createElement('div');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-400');
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : (type === 'warn' ? 'text-yellow-400' : 'text-slate-400'));
             entry.className = `mb-1 ${color}`;
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
             logEl.appendChild(entry);
             logEl.scrollTop = logEl.scrollHeight;
         }
 
-        window.onload = () => {
-            if (!navigator.bluetooth) {
-                document.getElementById('browserWarning').classList.remove('hidden');
-                document.getElementById('warningMessage').textContent = "Web Bluetooth non supportato. Usa Chrome su Android tramite HTTPS.";
-                connectBtn.disabled = true;
-                connectBtn.style.opacity = "0.5";
-            }
-        };
-
         async function connect() {
             const selectedMode = modeSelect.value;
             const config = UUIDS[selectedMode];
 
             try {
-                addLog(`Ricerca dispositivo (${selectedMode})...`);
+                updateStatusUI('connecting');
+                addLog(`Scansione per Servizio: ${config.SERVICE.split('-')[0]}...`);
+                
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ services: [config.SERVICE] }],
                     optionalServices: [config.SERVICE]
@@ -149,29 +148,49 @@
                 bleDevice = device;
                 device.addEventListener('gattserverdisconnected', onDisconnected);
 
-                addLog("Connessione in corso...");
+                addLog("Dispositivo trovato. Connessione GATT...");
                 const server = await device.gatt.connect();
 
-                addLog("Accesso al servizio...");
+                addLog("Accesso al servizio primario...");
                 const service = await server.getPrimaryService(config.SERVICE);
 
-                addLog("Configurazione caratteristiche...");
-                sensorChar = await service.getCharacteristic(config.SENSORS);
-                resetChar = await service.getCharacteristic(config.RESET);
+                addLog("Ricerca caratteristiche...");
+                
+                // Fallback Logic: Prova UUID lungo, poi UUID corto
+                try {
+                    sensorChar = await service.getCharacteristic(config.SENSORS);
+                } catch (e) {
+                    addLog("UUID Lungo 0xFFFF non trovato, provo short UUID...", 'warn');
+                    sensorChar = await service.getCharacteristic(config.SENSORS_SHORT);
+                }
 
-                // Setup Notifiche per Reset
+                try {
+                    resetChar = await service.getCharacteristic(config.RESET);
+                } catch (e) {
+                    addLog("UUID Lungo 0xFFFE non trovato, provo short UUID...", 'warn');
+                    resetChar = await service.getCharacteristic(config.RESET_SHORT);
+                }
+
+                addLog("Caratteristiche identificate correttamente.", 'success');
+
                 if (resetChar.properties.notify) {
                     await resetChar.startNotifications();
                     resetChar.addEventListener('characteristicvaluechanged', handleResetNotification);
-                    addLog("Notifiche Reset attivate", 'success');
+                    addLog("Notifiche Reset attivate.");
                 }
 
                 updateUI(true);
-                addLog(`Connesso a ${device.name}`, 'success');
-                readSensors(); // Lettura iniziale
+                addLog(`Connesso a: ${device.name || 'Dispositivo'}`, 'success');
+                
+                // Forza una piccola attesa prima della lettura iniziale per stabilità
+                setTimeout(readSensors, 500);
 
             } catch (error) {
-                addLog(`Errore: ${error.message}`, 'error');
+                updateStatusUI('disconnected');
+                addLog(`Errore critico: ${error.message}`, 'error');
+                if (error.message.includes('No Characteristics')) {
+                    addLog("Suggerimento: Prova a spegnere/riaccendere il Bluetooth sul telefono per pulire la cache GATT.", 'warn');
+                }
             }
         }
 
@@ -179,11 +198,18 @@
             if (!sensorChar) return;
             try {
                 const value = await sensorChar.readValue();
-                const count = new TextDecoder().decode(value);
-                sensorDisplay.textContent = count;
-                addLog(`Numero sensori letto: ${count}`);
+                // Gestione dati: prova a decodificare come stringa, se fallisce usa byte
+                let decoded;
+                try {
+                    decoded = new TextDecoder().decode(value);
+                } catch(e) {
+                    decoded = value.getUint8(0).toString();
+                }
+                
+                sensorDisplay.textContent = decoded;
+                addLog(`Dato Sensori: ${decoded}`);
             } catch (e) {
-                addLog("Errore lettura sensori", 'error');
+                addLog(`Errore lettura: ${e.message}`, 'error');
             }
         }
 
@@ -191,70 +217,85 @@
             const val = document.getElementById('sensorInput').value;
             if (!val || !sensorChar) return;
             try {
+                // Invio come stringa (standard per molti moduli seriali)
                 await sensorChar.writeValue(new TextEncoder().encode(val));
-                addLog(`Impostato a ${val}. Riavvio dispositivo...`, 'success');
-                sensorDisplay.textContent = val;
+                addLog(`Comando inviato: ${val}`, 'success');
+                setTimeout(readSensors, 1000); // Rileggi dopo 1s
             } catch (e) {
-                addLog("Errore scrittura", 'error');
+                addLog(`Errore scrittura: ${e.message}`, 'error');
             }
         }
 
         async function factoryReset() {
             if (!resetChar) return;
-            if (!confirm("Sei sicuro? Questa azione cancellerà tutti i dati.")) return;
+            if (!confirm("ATTENZIONE: Procedere con il Factory Reset?")) return;
 
             try {
-                resetStatus.textContent = "Reset in corso...";
-                resetStatus.className = "text-[10px] text-center mt-2 text-yellow-500 animate-pulse";
+                resetStatus.textContent = "Inviando comando...";
                 await resetChar.writeValue(new TextEncoder().encode("1"));
-                addLog("Comando Reset inviato. In attesa di conferma...");
+                addLog("Reset '1' inviato. In attesa di conferma '0' dal dispositivo...");
             } catch (e) {
-                addLog("Errore comando reset", 'error');
-                resetStatus.textContent = "Errore";
+                addLog("Errore Reset", 'error');
             }
         }
 
         function handleResetNotification(event) {
             const val = new TextDecoder().decode(event.target.value);
-            if (val === "0") {
+            addLog(`Notifica ricevuta: ${val}`);
+            if (val.trim() === "0") {
                 resetStatus.textContent = "Reset Completato!";
                 resetStatus.className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
-                addLog("Notifica: Factory Reset completato correttamente", 'success');
+                addLog("Il dispositivo ha confermato il reset.", 'success');
             }
         }
 
         function onDisconnected() {
             updateUI(false);
-            addLog("Dispositivo disconnesso", 'error');
+            addLog("Dispositivo disconnesso dal server.", 'error');
+        }
+
+        function updateStatusUI(state) {
+            const icon = document.getElementById('statusIcon');
+            const text = document.getElementById('statusText');
+            
+            if (state === 'connecting') {
+                statusRing.classList.remove('hidden');
+                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-blue-500';
+                text.textContent = "Connessione...";
+            } else if (state === 'connected') {
+                statusRing.classList.add('hidden');
+                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
+                text.textContent = "Connesso";
+                text.className = 'text-xs font-bold uppercase tracking-tight text-emerald-400';
+            } else {
+                statusRing.classList.add('hidden');
+                icon.className = 'relative inline-flex w-3 h-3 rounded-full bg-red-500';
+                text.textContent = "Disconnesso";
+                text.className = 'text-xs font-bold uppercase tracking-tight text-slate-400';
+            }
         }
 
         function updateUI(connected) {
             if (connected) {
+                updateStatusUI('connected');
                 connectBtn.classList.add('hidden');
                 disconnectBtn.classList.remove('hidden');
                 controls.classList.remove('opacity-40', 'pointer-events-none');
-                document.getElementById('statusIcon').classList.replace('bg-red-500', 'bg-emerald-500');
-                document.getElementById('statusText').textContent = "Online";
-                document.getElementById('statusText').classList.replace('text-slate-400', 'text-emerald-400');
             } else {
+                updateStatusUI('disconnected');
                 connectBtn.classList.remove('hidden');
                 disconnectBtn.classList.add('hidden');
                 controls.classList.add('opacity-40', 'pointer-events-none');
-                document.getElementById('statusIcon').classList.replace('bg-emerald-500', 'bg-red-500');
-                document.getElementById('statusText').textContent = "Disconnesso";
-                document.getElementById('statusText').classList.replace('text-emerald-400', 'text-slate-400');
                 sensorDisplay.textContent = "--";
             }
         }
 
-        // Listeners
         connectBtn.addEventListener('click', connect);
-        disconnectBtn.addEventListener('click', () => bleDevice.gatt.disconnect());
+        disconnectBtn.addEventListener('click', () => bleDevice && bleDevice.gatt.disconnect());
         document.getElementById('setSensorsBtn').addEventListener('click', writeSensors);
         document.getElementById('refreshSensorsBtn').addEventListener('click', readSensors);
         document.getElementById('resetBtn').addEventListener('click', factoryReset);
         document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '');
-        
     </script>
 </body>
 </html>
