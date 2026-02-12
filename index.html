@@ -3,424 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dual Core Controller</title>
+    <title>ESP32 BLE Hub Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .log-container { font-family: 'Courier New', Courier, monospace; font-size: 0.75rem; }
-        @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
-        .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
-        .sensor-card { transition: all 0.3s ease; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .slot-card { animation: fade-in 0.3s ease-out forwards; }
+        .pulse-text { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
 
     <header class="text-center mb-6 pt-2">
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            Smart Hub Controller
-        </h1>
-        <p class="text-xs text-slate-500 mt-1">Dual Core BLE Manager</p>
+        <h1 id="mainTitle" class="text-2xl font-bold text-blue-400">BLE Hub Manager</h1>
+        <p class="text-xs text-slate-500">Controller & Monitor</p>
     </header>
 
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
-        <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-                <div class="relative flex items-center justify-center w-3 h-3">
-                    <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
-                    <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
-                </div>
-                <div class="flex flex-col">
-                    <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
-                    <span id="modeText" class="text-[10px] text-slate-500 font-mono">--</span>
-                </div>
+    <div class="bg-slate-800 rounded-2xl p-5 shadow-lg mb-4 border border-slate-700">
+        <div class="flex justify-between items-center mb-4">
+            <div id="statusIndicator" class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-500 shadow-md transition-colors duration-300" id="statusDot"></span>
+                <span id="statusText" class="text-xs font-bold uppercase text-slate-400">Disconnesso</span>
             </div>
+            <div id="modeBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-700 text-white">--</div>
         </div>
         
-        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
-            📡 Connetti Dispositivo
+        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all shadow-blue-900/20 shadow-lg">
+            📡 Connetti all'Hub
         </button>
-        <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
-            ❌ Scollega
+        <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold transition-all">
+            Disconnetti
         </button>
     </div>
 
     <main id="configPanel" class="hidden space-y-4">
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-blue-400 mb-4 uppercase tracking-widest border-b border-slate-700 pb-2">Impostazioni Sistema</h2>
-            
-            <div class="flex items-center justify-between gap-4 mb-4">
-                <label class="text-sm text-slate-300">Nome Hub:</label>
-                <div class="flex items-center gap-2">
-                    <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="w-32 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm font-mono focus:border-blue-500 outline-none">
-                    <button id="saveNameBtn" class="bg-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-500 active:scale-95">OK</button>
+        <div class="bg-slate-800 rounded-xl p-4 border border-indigo-500/30 shadow-lg">
+            <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2">
+                ⚙️ Impostazioni Globali
+            </h2>
+            <div class="mb-4">
+                <label class="block text-[10px] text-slate-400 uppercase mb-1">Nome Dispositivo</label>
+                <div class="flex gap-2">
+                    <input id="hubNameInput" type="text" maxlength="20" placeholder="Leggendo..." 
+                        class="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm focus:border-indigo-500 outline-none transition-colors">
+                    <button id="saveNameBtn" class="bg-indigo-600 hover:bg-indigo-500 px-4 rounded text-xs font-bold transition-colors">SALVA</button>
                 </div>
             </div>
-
-            <div class="flex items-center justify-between gap-4">
-                <label class="text-sm text-slate-300">Numero Sensori:</label>
-                <div class="flex items-center gap-2">
-                    <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
-                    <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
+            <div>
+                <label class="block text-[10px] text-slate-400 uppercase mb-1">Numero Sensori (Max 10)</label>
+                <div class="flex gap-2">
+                    <input id="sensorCountInput" type="number" min="1" max="10" placeholder="#" 
+                        class="w-20 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-center focus:border-blue-500 outline-none transition-colors">
+                    <button id="saveCountBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 px-4 rounded text-xs font-bold transition-colors">IMPOSTA & RIAVVIA</button>
                 </div>
             </div>
-            <p class="text-[10px] text-slate-500 mt-2 italic">* Cambiare il numero sensori riavvia il dispositivo.</p>
         </div>
-
-        <div id="configSlotsContainer" class="space-y-4"></div>
-
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
-            <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
-            <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+        <div id="slotsContainer" class="space-y-3"></div>
+        <div class="pt-4">
+            <button id="resetBtn" class="w-full border border-red-900/50 text-red-400 hover:bg-red-900/20 py-2 rounded-lg text-xs font-bold transition-colors">
                 ⚠️ Factory Reset
             </button>
-            <p id="resetFeedback" class="text-[10px] text-center mt-2 text-slate-500 h-4"></p>
         </div>
     </main>
 
     <main id="hubPanel" class="hidden">
         <div class="flex justify-between items-center mb-2 px-1">
-            <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Live Data Stream</h2>
-            <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400" id="hubSensorCountBadge">0 Sensori</span>
+            <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-widest pulse-text">• Live Stream</h2>
         </div>
         <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
     </main>
 
     <div class="mt-auto pt-6">
-        <div class="flex justify-between items-center mb-1">
-            <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
-            <button id="clearLog" class="text-[10px] text-blue-500 hover:text-blue-400">Pulisci</button>
-        </div>
-        <div id="log" class="log-container bg-black/40 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-snug">
-            <div class="text-slate-600 italic">> Ready.</div>
+        <div class="bg-black/50 rounded-lg p-3 h-32 overflow-y-auto border border-slate-800 log-container" id="log">
+            <div class="text-slate-600">> Console pronta.</div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURAZIONE UUID ---
-        // ATTENZIONE: Assicurati che corrispondano alle #define nel tuo codice C++
         const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
         const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
-        
-        // UUID Caratteristiche aggiornati
-        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff'; // Nome Hub (Stringa)
-        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa'; // Numero Sensori (Int)
-        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe'; // Reset
+        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff';
+        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa';
+        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
 
-        let bleDevice = null;
-        let gattServer = null;
-        let activeService = null;
-        
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const logEl = document.getElementById('log');
-        const configPanel = document.getElementById('configPanel');
-        const hubPanel = document.getElementById('hubPanel');
-        const sensorGrid = document.getElementById('sensorGrid');
-        const configSlotsContainer = document.getElementById('configSlotsContainer');
-        
-        function addLog(msg, type = 'info') {
-            const entry = document.createElement('div');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : (type === 'rx' ? 'text-cyan-400' : 'text-slate-400'));
-            entry.className = `${color}`;
-            entry.textContent = `${type === 'rx' ? 'RX < ' : (type === 'tx' ? 'TX > ' : '> ')}${msg}`;
-            logEl.appendChild(entry);
-            logEl.scrollTop = logEl.scrollHeight;
-        }
+        let bleDevice, gattServer, activeService;
 
-        function getConfigSlotUUID(index, type) {
-            const padding = index < 10 ? "00000" : "0000";
-            return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
+        const els = {
+            mainTitle: document.getElementById('mainTitle'), // Riferimento al titolo
+            connectBtn: document.getElementById('connectBtn'),
+            disconnectBtn: document.getElementById('disconnectBtn'),
+            statusText: document.getElementById('statusText'),
+            statusDot: document.getElementById('statusDot'),
+            modeBadge: document.getElementById('modeBadge'),
+            configPanel: document.getElementById('configPanel'),
+            hubPanel: document.getElementById('hubPanel'),
+            slotsContainer: document.getElementById('slotsContainer'),
+            log: document.getElementById('log'),
+            hubNameInput: document.getElementById('hubNameInput'),
+            sensorCountInput: document.getElementById('sensorCountInput')
+        };
+
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type === 'tx' ? 'text-blue-400' : (type === 'rx' ? 'text-emerald-400' : (type === 'err' ? 'text-red-400' : 'text-slate-400'));
+            div.textContent = (type === 'tx' ? 'TX > ' : (type === 'rx' ? 'RX < ' : '> ')) + msg;
+            els.log.appendChild(div);
+            els.log.scrollTop = els.log.scrollHeight;
         }
 
         async function connect() {
             try {
-                updateStatus('connecting');
+                els.statusText.textContent = "Ricerca...";
                 bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'ESP32-S3' }], // Filtro un po' più largo per trovare anche se il nome cambia
+                    filters: [{ namePrefix: 'ESP32' }], 
                     optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID]
                 });
-                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
+                els.statusText.textContent = "Connessione...";
                 gattServer = await bleDevice.gatt.connect();
+
                 const services = await gattServer.getPrimaryServices();
-                
                 let mode = 'UNKNOWN';
-                for (const service of services) {
-                    if (service.uuid === CONFIG_SVC_UUID) { mode = 'CONFIG'; activeService = service; }
-                    else if (service.uuid === HUB_SVC_UUID) { mode = 'HUB'; activeService = service; }
+                
+                for (const svc of services) {
+                    if (svc.uuid === CONFIG_SVC_UUID) { mode = 'CONFIG'; activeService = svc; }
+                    else if (svc.uuid === HUB_SVC_UUID) { mode = 'HUB'; activeService = svc; }
                 }
 
-                if (mode === 'CONFIG') await setupConfigMode();
-                else if (mode === 'HUB') await setupHubMode();
-                else throw new Error("Nessun servizio compatibile trovato.");
+                updateUIState(true, mode);
+                
+                if (mode === 'CONFIG') await initConfigMode();
+                else if (mode === 'HUB') await initHubMode();
+                else throw new Error("Servizio non riconosciuto");
 
-                updateStatus('connected', mode);
-                addLog(`Connesso: ${mode}`, 'success');
-            } catch (error) {
-                console.error(error);
-                addLog(`Errore: ${error.message}`, 'error');
-                updateStatus('disconnected');
+            } catch (e) {
+                log(e.message, 'err');
+                onDisconnect();
             }
         }
 
-        async function setupConfigMode() {
-            configPanel.classList.remove('hidden');
-            hubPanel.classList.add('hidden');
-            configSlotsContainer.innerHTML = ''; 
+        function onDisconnect() {
+            if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+            updateUIState(false);
+            els.mainTitle.textContent = "BLE Hub Manager"; // Reset del titolo
+            log("Disconnesso", 'err');
+        }
+
+        function updateUIState(connected, mode = '') {
+            els.connectBtn.classList.toggle('hidden', connected);
+            els.disconnectBtn.classList.toggle('hidden', !connected);
+            els.statusDot.className = `w-3 h-3 rounded-full shadow-md transition-colors duration-300 ${connected ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-red-500'}`;
+            els.statusText.textContent = connected ? "CONNESSO" : "DISCONNESSO";
+            els.statusText.className = connected ? "text-xs font-bold uppercase text-emerald-400" : "text-xs font-bold uppercase text-slate-400";
+            
+            if (connected) {
+                els.modeBadge.classList.remove('hidden');
+                els.modeBadge.textContent = mode;
+                els.modeBadge.className = `px-2 py-0.5 rounded text-[10px] font-mono font-bold ${mode === 'CONFIG' ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'}`;
+            } else {
+                els.modeBadge.classList.add('hidden');
+                els.configPanel.classList.add('hidden');
+                els.hubPanel.classList.add('hidden');
+            }
+        }
+
+        // --- CONFIG MODE ---
+        async function initConfigMode() {
+            els.configPanel.classList.remove('hidden');
+            els.slotsContainer.innerHTML = ''; 
 
             try {
-                // 1. Leggi Numero Sensori
+                // Leggi Nome
+                const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+                const nameVal = await nameChar.readValue();
+                const nameStr = new TextDecoder().decode(nameVal);
+                els.hubNameInput.value = nameStr;
+                els.mainTitle.textContent = nameStr; // Aggiorna anche il titolo
+                log(`Nome: ${nameStr}`, 'rx');
+
+                // Leggi Conteggio
                 const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-                const value = await countChar.readValue();
-                const count = parseInt(new TextDecoder().decode(value));
-                document.getElementById('sensorCountInput').value = count;
-                addLog(`Config: ${count} sensori attivi.`, 'rx');
+                const countVal = await countChar.readValue();
+                const count = parseInt(new TextDecoder().decode(countVal));
+                els.sensorCountInput.value = count;
+                log(`Sensori Attivi: ${count}`, 'rx');
 
-                // 2. Leggi Nome Hub (NUOVO)
-                try {
-                    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                    const nameVal = await nameChar.readValue();
-                    const nameStr = new TextDecoder().decode(nameVal);
-                    document.getElementById('hubNameInput').value = nameStr;
-                    addLog(`Hub Name: ${nameStr}`, 'rx');
-                } catch (e) {
-                    addLog("Warning: Impossibile leggere Nome Hub", 'error');
-                }
-
-                // 3. Genera Slot
+                // Leggi Slots
                 for (let i = 1; i <= count; i++) {
-                    createConfigSlot(i);
-                    await readConfigSlotValues(i);
-                    await new Promise(r => setTimeout(r, 50));
+                    createSlotUI(i);
+                    await readSlot(i);
                 }
-
-                // 4. Setup Reset Listener
-                const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
-                if (resetChar.properties.notify) {
-                    await resetChar.startNotifications();
-                    resetChar.addEventListener('characteristicvaluechanged', (e) => {
-                        const val = new TextDecoder().decode(e.target.value);
-                        if(val === "0") {
-                            document.getElementById('resetFeedback').textContent = "Reset Completato!";
-                            document.getElementById('resetFeedback').className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
-                            addLog("Factory Reset Confermato.", 'success');
-                            document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
-                            document.getElementById('hubNameInput').value = "Hub-01"; // Reset visuale default
-                        }
-                    });
-                }
-            } catch (e) { addLog("Errore config setup: " + e.message, 'error'); }
+            } catch (e) { log("Errore Init Config: " + e.message, 'err'); }
         }
 
-        function createConfigSlot(index) {
-            const div = document.createElement('div');
-            div.className = "bg-slate-800 rounded-xl p-4 border border-slate-700 relative";
-            div.innerHTML = `
-                <div class="absolute top-2 right-3 text-[10px] font-bold text-slate-600">SLOT ${index}</div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-[10px] text-blue-300 uppercase font-bold">Service UUID</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="svc-uuid-${index}" placeholder="Waiting..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
-                            <button onclick="saveSlotUUID(${index}, 0)" class="bg-slate-700 hover:bg-blue-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
+        function createSlotUI(index) {
+            const html = `
+                <div class="slot-card bg-slate-800 rounded-xl p-4 border border-slate-700 relative">
+                    <div class="absolute top-0 right-0 bg-slate-700 rounded-bl-lg rounded-tr-lg px-3 py-1 text-[10px] font-bold text-white">SENSORE ${index}</div>
+                    <div class="mt-2 space-y-3">
+                        <div>
+                            <label class="text-[10px] text-blue-300 uppercase font-bold">Service UUID</label>
+                            <div class="flex gap-2 mt-1">
+                                <input type="text" id="svc-${index}" placeholder="..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
+                                <button onclick="writeSlot(${index}, 0)" class="bg-slate-700 hover:bg-blue-600 text-white px-2 rounded text-xs">💾</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-emerald-300 uppercase font-bold">Char UUID</label>
+                            <div class="flex gap-2 mt-1">
+                                <input type="text" id="char-${index}" placeholder="..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-emerald-500 outline-none">
+                                <button onclick="writeSlot(${index}, 1)" class="bg-slate-700 hover:bg-emerald-600 text-white px-2 rounded text-xs">💾</button>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label class="text-[10px] text-indigo-300 uppercase font-bold">Char UUID</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="char-uuid-${index}" placeholder="Waiting..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
-                            <button onclick="saveSlotUUID(${index}, 1)" class="bg-slate-700 hover:bg-indigo-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            configSlotsContainer.appendChild(div);
+                </div>`;
+            els.slotsContainer.insertAdjacentHTML('beforeend', html);
         }
 
-        async function readConfigSlotValues(index) {
-            const svcInput = document.getElementById(`svc-uuid-${index}`);
-            const charInput = document.getElementById(`char-uuid-${index}`);
-            svcInput.placeholder = "Reading...";
-            charInput.placeholder = "Reading...";
-
-            try {
-                const svcCharUUID = getConfigSlotUUID(index, 0);
-                const svcChar = await activeService.getCharacteristic(svcCharUUID);
-                const svcVal = await svcChar.readValue();
-                const svcStr = new TextDecoder().decode(svcVal);
-                if(svcStr) svcInput.value = svcStr; else svcInput.placeholder = "Empty";
-                
-                await new Promise(r => setTimeout(r, 50));
-
-                const charCharUUID = getConfigSlotUUID(index, 1);
-                const charChar = await activeService.getCharacteristic(charCharUUID);
-                const charVal = await charChar.readValue();
-                const charStr = new TextDecoder().decode(charVal);
-                if(charStr) charInput.value = charStr; else charInput.placeholder = "Empty";
-                
-                addLog(`Slot ${index}: Loaded.`, 'rx');
-            } catch(e) {
-                console.log(`Slot ${index}: Errore lettura.`);
-                svcInput.placeholder = "Error";
-                charInput.placeholder = "Error";
-            }
+        function getSlotUUID(index, type) {
+            const padding = index < 10 ? "00000" : "0000";
+            return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
         }
 
-        window.saveSlotUUID = async function(index, type) {
-            const inputId = type === 0 ? `svc-uuid-${index}` : `char-uuid-${index}`;
-            const val = document.getElementById(inputId).value.trim();
-            if(!val) return alert("Inserisci un UUID valido");
-
+        async function readSlot(index) {
             try {
-                const uuid = getConfigSlotUUID(index, type);
-                const char = await activeService.getCharacteristic(uuid);
-                addLog(`Slot ${index} Write...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog(`Slot ${index} Saved.`, 'success');
-            } catch(e) { addLog(`Err Save Slot ${index}: ${e.message}`, 'error'); }
+                const svcEl = document.getElementById(`svc-${index}`);
+                const charEl = document.getElementById(`char-${index}`);
+                
+                const svcUuid = getSlotUUID(index, 0);
+                const charUuid = getSlotUUID(index, 1);
+                
+                const svcVal = await (await activeService.getCharacteristic(svcUuid)).readValue();
+                const charVal = await (await activeService.getCharacteristic(charUuid)).readValue();
+
+                svcEl.value = new TextDecoder().decode(svcVal);
+                charEl.value = new TextDecoder().decode(charVal);
+                log(`S${index} OK`, 'rx');
+            } catch (e) { log(`Err S${index}`, 'err'); }
+        }
+
+        window.writeSlot = async function(index, type) {
+            const elId = type === 0 ? `svc-${index}` : `char-${index}`;
+            const val = document.getElementById(elId).value.trim();
+            if(!val) return;
+            try {
+                const uuid = getSlotUUID(index, type);
+                await (await activeService.getCharacteristic(uuid)).writeValue(new TextEncoder().encode(val));
+                log(`S${index} salvato`, 'tx');
+            } catch(e) { log("Err Save", 'err'); }
         };
 
-        // --- FUNZIONE SALVATAGGIO NOME ---
-        async function saveHubName() {
-            const val = document.getElementById('hubNameInput').value.trim();
-            if(!val) return alert("Inserisci un nome valido");
-            
-            try {
-                const char = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                addLog(`Saving Name: ${val}...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog("Name Saved!", 'success');
-            } catch(e) { addLog("Err Save Name: " + e.message, 'error'); }
-        }
-
-        async function saveSensorCount() {
-            const val = document.getElementById('sensorCountInput').value;
+        els.saveNameBtn.addEventListener('click', async () => {
+            const val = els.hubNameInput.value.trim();
             if(!val) return;
-            const count = parseInt(val);
-            if (count < 1 || count > 10) {
-                alert("Errore: Il sistema supporta da 1 a 10 sensori massimo.");
-                return;
+            try {
+                await (await activeService.getCharacteristic(CHAR_NAME_UUID)).writeValue(new TextEncoder().encode(val));
+                els.mainTitle.textContent = val; // Aggiorna subito il titolo
+                log("Nome salvato", 'success');
+            } catch(e) { log("Err Name", 'err'); }
+        });
+
+        els.saveCountBtn.addEventListener('click', async () => {
+            const val = els.sensorCountInput.value;
+            if(val < 1 || val > 10) return;
+            try {
+                await (await activeService.getCharacteristic(CHAR_COUNT_UUID)).writeValue(new TextEncoder().encode(val));
+                log("Riavvio...", 'success');
+                setTimeout(onDisconnect, 1500);
+            } catch(e) { log("Err Count", 'err'); }
+        });
+
+        // --- HUB MODE (OPERATIVA) ---
+        async function initHubMode() {
+            els.hubPanel.classList.remove('hidden');
+
+            // 1. TENTATIVO LETTURA NOME (Anche se siamo in Hub Mode)
+            try {
+                // Richiediamo esplicitamente il servizio CONFIG per leggere il nome
+                const configService = await gattServer.getPrimaryService(CONFIG_SVC_UUID);
+                const nameChar = await configService.getCharacteristic(CHAR_NAME_UUID);
+                const nameVal = await nameChar.readValue();
+                const nameStr = new TextDecoder().decode(nameVal);
+                
+                // Aggiorna il titolo principale con il nome dell'hub
+                els.mainTitle.textContent = nameStr;
+                els.mainTitle.className = "text-2xl font-bold text-emerald-400 drop-shadow-md"; // Lo rendiamo verde per indicare "Operativo"
+                log(`Hub: ${nameStr}`, 'rx');
+            } catch (e) {
+                // Se fallisce, usiamo il nome del dispositivo BLE generico
+                if (bleDevice.name) els.mainTitle.textContent = bleDevice.name;
+                log("Info: Impossibile leggere nome esteso in Hub Mode.", 'info');
             }
 
-            try {
-                const char = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-                addLog(`Saving count: ${val}...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog("Saved. Rebooting...", 'success');
-                setTimeout(() => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); }, 1500);
-            } catch(e) { addLog("Err Save Count: " + e.message, 'error'); }
+            // 2. LOGICA SENSORI
+            const chars = await activeService.getCharacteristics();
+            chars.forEach((c, i) => {
+                const id = i + 1;
+                const div = document.createElement('div');
+                div.id = `hub-card-${id}`;
+                div.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center opacity-50";
+                div.innerHTML = `
+                    <div><div class="text-[10px] text-slate-500 font-bold">SENSORE ${id}</div><div id="val-${id}" class="text-xl font-mono">--</div></div>
+                    <div id="stat-${id}" class="text-[10px] px-2 py-1 bg-slate-900 rounded">WAIT</div>
+                `;
+                document.getElementById('sensorGrid').appendChild(div);
+
+                c.startNotifications().then(() => {
+                    c.addEventListener('characteristicvaluechanged', (e) => updateHubCard(id, new TextDecoder().decode(e.target.value)));
+                });
+                c.readValue().then(v => updateHubCard(id, new TextDecoder().decode(v)));
+            });
         }
 
-        async function performReset() {
-            if(!confirm("Reset ALL config?")) return;
-            try {
-                const char = await activeService.getCharacteristic(CHAR_RESET_UUID);
-                await char.writeValue(new TextEncoder().encode("1"));
-                addLog("Reset requested...", 'tx');
-            } catch(e) { addLog("Err Reset: " + e.message, 'error'); }
-        }
-
-        async function setupHubMode() {
-            configPanel.classList.add('hidden');
-            hubPanel.classList.remove('hidden');
-            sensorGrid.innerHTML = '';
-
-            try {
-                const characteristics = await activeService.getCharacteristics();
-                document.getElementById('hubSensorCountBadge').textContent = `${characteristics.length} Sensori`;
-
-                characteristics.forEach((char, index) => { createSensorCard(index + 1); });
-
-                for (let i = 0; i < characteristics.length; i++) {
-                    const char = characteristics[i];
-                    try {
-                        await char.startNotifications();
-                        char.addEventListener('characteristicvaluechanged', (e) => {
-                            const val = new TextDecoder().decode(e.target.value);
-                            updateSensorCard(i + 1, val);
-                        });
-                        const val = await char.readValue();
-                        updateSensorCard(i + 1, new TextDecoder().decode(val));
-                        await new Promise(r => setTimeout(r, 100)); 
-                    } catch (err) { addLog(`Err Sensor ${i + 1}`, 'error'); }
-                }
-            } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
-        }
-
-        function createSensorCard(id) {
-            const div = document.createElement('div');
-            div.id = `sensor-card-${id}`;
-            div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center";
-            div.innerHTML = `<div><div class="text-[10px] text-slate-500 uppercase font-bold">Sensore ${id}</div><div id="sensor-val-${id}" class="font-mono text-xl text-white mt-1">--</div></div><div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>`;
-            sensorGrid.appendChild(div);
-        }
-
-        function updateSensorCard(id, rawString) {
-            const card = document.getElementById(`sensor-card-${id}`);
-            const valEl = document.getElementById(`sensor-val-${id}`);
-            const statusEl = document.getElementById(`sensor-status-${id}`);
-
-            if (rawString.includes("Connected,")) {
-                valEl.textContent = rawString.split(',')[1].trim();
-                statusEl.textContent = "ONLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
-            } else if (rawString.includes("Disconnected")) {
-                valEl.textContent = "--";
-                statusEl.textContent = "OFFLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 flex justify-between items-center opacity-75";
-            } else if (rawString.includes("Not Configured")) {
-                valEl.textContent = "EMPTY";
-                statusEl.textContent = "NO CONFIG";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider";
-                card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
-            }
-        }
-
-        function updateStatus(state, mode = '') {
-            const statusText = document.getElementById('statusText');
-            const statusIcon = document.getElementById('statusIcon');
-            const statusRing = document.getElementById('statusRing');
-            const modeText = document.getElementById('modeText');
-
-            if (state === 'connecting') {
-                statusText.textContent = "Connessione...";
-                statusRing.classList.remove('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-blue-500";
-                connectBtn.disabled = true;
-                connectBtn.textContent = "Ricerca in corso...";
-            } else if (state === 'connected') {
-                statusText.textContent = "Connesso";
-                statusText.className = "text-xs font-bold uppercase tracking-tight text-emerald-400";
-                statusRing.classList.add('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
-                modeText.textContent = mode === 'CONFIG' ? "MODALITÀ CONFIGURAZIONE" : "MODALITÀ OPERATIVA";
-                modeText.className = mode === 'CONFIG' ? "text-[10px] text-yellow-400 font-bold font-mono" : "text-[10px] text-blue-300 font-bold font-mono";
-                connectBtn.classList.add('hidden');
-                disconnectBtn.classList.remove('hidden');
+        function updateHubCard(id, str) {
+            const card = document.getElementById(`hub-card-${id}`);
+            const val = document.getElementById(`val-${id}`);
+            const stat = document.getElementById(`stat-${id}`);
+            
+            if(str.includes("Connected")) {
+                card.className = "bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-lg shadow-emerald-900/20 flex justify-between items-center transition-all duration-500";
+                val.textContent = str.split(',')[1] || "OK";
+                stat.textContent = "ONLINE";
+                stat.className = "text-[10px] px-2 py-1 bg-emerald-900 text-emerald-400 font-bold rounded";
             } else {
-                statusText.textContent = "Disconnesso";
-                statusText.className = "text-xs font-bold uppercase tracking-tight text-slate-400";
-                statusRing.classList.add('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-red-500";
-                modeText.textContent = "--";
-                connectBtn.disabled = false;
-                connectBtn.textContent = "📡 Connetti Dispositivo";
-                connectBtn.classList.remove('hidden');
-                disconnectBtn.classList.add('hidden');
-                configPanel.classList.add('hidden');
-                hubPanel.classList.add('hidden');
-                sensorGrid.innerHTML = '';
-                configSlotsContainer.innerHTML = '';
+                card.className = "bg-slate-800 p-4 rounded-xl border border-red-900/30 flex justify-between items-center opacity-75";
+                val.textContent = "--";
+                stat.textContent = "OFFLINE";
+                stat.className = "text-[10px] px-2 py-1 bg-red-900 text-red-400 font-bold rounded";
             }
         }
-        function onDisconnected() { updateStatus('disconnected'); addLog('Connessione persa.', 'warn'); }
 
-        connectBtn.addEventListener('click', connect);
-        disconnectBtn.addEventListener('click', () => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
-        document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
-        document.getElementById('saveNameBtn').addEventListener('click', saveHubName); // Listener aggiunto
-        document.getElementById('resetBtn').addEventListener('click', performReset);
-        document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '<div class="text-slate-600 italic">> Log pulito.</div>');
+        els.connectBtn.addEventListener('click', connect);
+        els.disconnectBtn.addEventListener('click', onDisconnect);
+        document.getElementById('resetBtn').addEventListener('click', async () => {
+            if(confirm("Factory Reset?")) await (await activeService.getCharacteristic(CHAR_RESET_UUID)).writeValue(new TextEncoder().encode("1"));
+        });
     </script>
 </body>
 </html>
