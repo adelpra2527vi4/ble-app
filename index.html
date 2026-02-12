@@ -14,7 +14,6 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
 
-    <!-- Header -->
     <header class="text-center mb-6 pt-2">
         <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
             Smart Hub Controller
@@ -22,7 +21,6 @@
         <p class="text-xs text-slate-500 mt-1">Dual Core BLE Manager</p>
     </header>
 
-    <!-- Connection Panel -->
     <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
@@ -45,11 +43,18 @@
         </button>
     </div>
 
-    <!-- UI: CONFIG MODE (DDDD) -->
     <main id="configPanel" class="hidden space-y-4">
-        <!-- Sensor Count & Global Settings -->
         <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-blue-400 mb-3 uppercase tracking-widest">Impostazioni Sistema</h2>
+            <h2 class="text-xs font-bold text-blue-400 mb-4 uppercase tracking-widest border-b border-slate-700 pb-2">Impostazioni Sistema</h2>
+            
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <label class="text-sm text-slate-300">Nome Hub:</label>
+                <div class="flex items-center gap-2">
+                    <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="w-32 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm font-mono focus:border-blue-500 outline-none">
+                    <button id="saveNameBtn" class="bg-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-500 active:scale-95">OK</button>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between gap-4">
                 <label class="text-sm text-slate-300">Numero Sensori:</label>
                 <div class="flex items-center gap-2">
@@ -57,13 +62,11 @@
                     <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
                 </div>
             </div>
-            <p class="text-[10px] text-slate-500 mt-2 italic">* Max 10 Sensori. Il dispositivo si riavvierà al salvataggio.</p>
+            <p class="text-[10px] text-slate-500 mt-2 italic">* Cambiare il numero sensori riavvia il dispositivo.</p>
         </div>
 
-        <!-- Dynamic Slots Container -->
         <div id="configSlotsContainer" class="space-y-4"></div>
 
-        <!-- Factory Reset -->
         <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
             <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
             <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
@@ -73,7 +76,6 @@
         </div>
     </main>
 
-    <!-- UI: HUB MODE (EEEE) -->
     <main id="hubPanel" class="hidden">
         <div class="flex justify-between items-center mb-2 px-1">
             <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Live Data Stream</h2>
@@ -82,7 +84,6 @@
         <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
     </main>
 
-    <!-- System Log -->
     <div class="mt-auto pt-6">
         <div class="flex justify-between items-center mb-1">
             <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
@@ -94,10 +95,15 @@
     </div>
 
     <script>
+        // --- CONFIGURAZIONE UUID ---
+        // ATTENZIONE: Assicurati che corrispondano alle #define nel tuo codice C++
         const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
         const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
-        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bffff';
-        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
+        
+        // UUID Caratteristiche aggiornati
+        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff'; // Nome Hub (Stringa)
+        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa'; // Numero Sensori (Int)
+        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe'; // Reset
 
         let bleDevice = null;
         let gattServer = null;
@@ -129,7 +135,7 @@
             try {
                 updateStatus('connecting');
                 bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'ESP32-S3-Hub' }],
+                    filters: [{ namePrefix: 'ESP32-S3' }], // Filtro un po' più largo per trovare anche se il nome cambia
                     optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID]
                 });
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
@@ -161,18 +167,32 @@
             configSlotsContainer.innerHTML = ''; 
 
             try {
+                // 1. Leggi Numero Sensori
                 const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
                 const value = await countChar.readValue();
                 const count = parseInt(new TextDecoder().decode(value));
                 document.getElementById('sensorCountInput').value = count;
                 addLog(`Config: ${count} sensori attivi.`, 'rx');
 
+                // 2. Leggi Nome Hub (NUOVO)
+                try {
+                    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+                    const nameVal = await nameChar.readValue();
+                    const nameStr = new TextDecoder().decode(nameVal);
+                    document.getElementById('hubNameInput').value = nameStr;
+                    addLog(`Hub Name: ${nameStr}`, 'rx');
+                } catch (e) {
+                    addLog("Warning: Impossibile leggere Nome Hub", 'error');
+                }
+
+                // 3. Genera Slot
                 for (let i = 1; i <= count; i++) {
                     createConfigSlot(i);
                     await readConfigSlotValues(i);
                     await new Promise(r => setTimeout(r, 50));
                 }
 
+                // 4. Setup Reset Listener
                 const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
                 if (resetChar.properties.notify) {
                     await resetChar.startNotifications();
@@ -183,10 +203,11 @@
                             document.getElementById('resetFeedback').className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
                             addLog("Factory Reset Confermato.", 'success');
                             document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                            document.getElementById('hubNameInput').value = "Hub-01"; // Reset visuale default
                         }
                     });
                 }
-            } catch (e) { addLog("Errore config: " + e.message, 'error'); }
+            } catch (e) { addLog("Errore config setup: " + e.message, 'error'); }
         }
 
         function createConfigSlot(index) {
@@ -217,7 +238,6 @@
         async function readConfigSlotValues(index) {
             const svcInput = document.getElementById(`svc-uuid-${index}`);
             const charInput = document.getElementById(`char-uuid-${index}`);
-            
             svcInput.placeholder = "Reading...";
             charInput.placeholder = "Reading...";
 
@@ -258,17 +278,26 @@
             } catch(e) { addLog(`Err Save Slot ${index}: ${e.message}`, 'error'); }
         };
 
-        // --- VALIDAZIONE AGGIUNTA QUI ---
+        // --- FUNZIONE SALVATAGGIO NOME ---
+        async function saveHubName() {
+            const val = document.getElementById('hubNameInput').value.trim();
+            if(!val) return alert("Inserisci un nome valido");
+            
+            try {
+                const char = await activeService.getCharacteristic(CHAR_NAME_UUID);
+                addLog(`Saving Name: ${val}...`, 'tx');
+                await char.writeValue(new TextEncoder().encode(val));
+                addLog("Name Saved!", 'success');
+            } catch(e) { addLog("Err Save Name: " + e.message, 'error'); }
+        }
+
         async function saveSensorCount() {
             const val = document.getElementById('sensorCountInput').value;
             if(!val) return;
-
-            // VALIDAZIONE: Controllo numero sensori
             const count = parseInt(val);
             if (count < 1 || count > 10) {
                 alert("Errore: Il sistema supporta da 1 a 10 sensori massimo.");
-                addLog("Err: Numero sensori invalido (Max 10).", 'error');
-                return; // Blocca l'esecuzione
+                return;
             }
 
             try {
@@ -389,6 +418,7 @@
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', () => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
         document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
+        document.getElementById('saveNameBtn').addEventListener('click', saveHubName); // Listener aggiunto
         document.getElementById('resetBtn').addEventListener('click', performReset);
         document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '<div class="text-slate-600 italic">> Log pulito.</div>');
     </script>
