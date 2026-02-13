@@ -10,6 +10,7 @@
         @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
         .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
         .sensor-card { transition: all 0.3s ease; }
+        .relay-btn { transition: all 0.2s ease; }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
@@ -89,6 +90,16 @@
                 <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700" id="hubSensorCountBadge">0 Sensori</span>
             </div>
         </div>
+
+        <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700 mb-4">
+            <h3 class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span>⚡ Controllo Relè</span>
+                <span class="w-full h-[1px] bg-slate-700"></span>
+            </h3>
+            <div id="relayGrid" class="grid grid-cols-3 gap-3">
+                </div>
+        </div>
+
         <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
     </main>
 
@@ -107,21 +118,37 @@
         const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
         const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
         
+        // --- NUOVI UUID RELE' ---
+        const RELAY_SVC_UUID  = 'aaaa0001-0000-1000-8000-00805f9b34fb';
+        const RELAY_UUIDS = [
+            'aaaa0001-0000-1000-8000-00805f9b0001',
+            'aaaa0001-0000-1000-8000-00805f9b0002',
+            'aaaa0001-0000-1000-8000-00805f9b0003',
+            'aaaa0001-0000-1000-8000-00805f9b0004',
+            'aaaa0001-0000-1000-8000-00805f9b0005',
+            'aaaa0001-0000-1000-8000-00805f9b0006'
+        ];
+
         // UUID Caratteristiche aggiornati
-        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff'; // Nome Hub (Stringa)
-        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa'; // Numero Sensori (Int)
-        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe'; // Reset
+        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff'; 
+        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa'; 
+        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe'; 
 
         let bleDevice = null;
         let gattServer = null;
-        let activeService = null;
+        let activeService = null; // Servizio principale attivo (Config o Hub)
         
+        // Stato locale dei relè
+        let relayStates = [false, false, false, false, false, false];
+        let relayCharacteristics = []; // Array per memorizzare i puntatori alle char dei relè
+
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const logEl = document.getElementById('log');
         const configPanel = document.getElementById('configPanel');
         const hubPanel = document.getElementById('hubPanel');
         const sensorGrid = document.getElementById('sensorGrid');
+        const relayGrid = document.getElementById('relayGrid');
         const configSlotsContainer = document.getElementById('configSlotsContainer');
         
         function addLog(msg, type = 'info') {
@@ -140,13 +167,14 @@
 
         async function connect() {
             try {
+                updateStatus('connecting');
+                // Aggiunto RELAY_SVC_UUID ai servizi opzionali
                 bleDevice = await navigator.bluetooth.requestDevice({
 					filters: [
 						{ services: [CONFIG_SVC_UUID] },
 						{ services: [HUB_SVC_UUID] }
 					],
-					
-					optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID]
+					optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
 				});
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
                 gattServer = await bleDevice.gatt.connect();
@@ -177,32 +205,25 @@
             configSlotsContainer.innerHTML = ''; 
 
             try {
-                // 1. Leggi Numero Sensori
                 const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
                 const value = await countChar.readValue();
                 const count = parseInt(new TextDecoder().decode(value));
                 document.getElementById('sensorCountInput').value = count;
                 addLog(`Config: ${count} sensori attivi.`, 'rx');
 
-                // 2. Leggi Nome Hub
                 try {
                     const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
                     const nameVal = await nameChar.readValue();
                     const nameStr = new TextDecoder().decode(nameVal);
                     document.getElementById('hubNameInput').value = nameStr;
-                    addLog(`Hub Name: ${nameStr}`, 'rx');
-                } catch (e) {
-                    addLog("Warning: Impossibile leggere Nome Hub", 'error');
-                }
+                } catch (e) { addLog("Warning: Impossibile leggere Nome Hub", 'error'); }
 
-                // 3. Genera Slot
                 for (let i = 1; i <= count; i++) {
                     createConfigSlot(i);
                     await readConfigSlotValues(i);
                     await new Promise(r => setTimeout(r, 50));
                 }
 
-                // 4. Setup Reset Listener
                 const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
                 if (resetChar.properties.notify) {
                     await resetChar.startNotifications();
@@ -220,6 +241,168 @@
             } catch (e) { addLog("Errore config setup: " + e.message, 'error'); }
         }
 
+        async function setupHubMode() {
+            configPanel.classList.add('hidden');
+            hubPanel.classList.remove('hidden');
+            sensorGrid.innerHTML = '';
+            relayGrid.innerHTML = ''; // Pulisci griglia relè
+            relayCharacteristics = [];
+            
+            document.getElementById('liveHubName').textContent = "--";
+
+            // 1. SETUP RELÈ
+            try {
+                // Recupera il servizio Relè separatamente dal servizio Hub
+                const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
+                addLog("Servizio Relè Trovato.", 'success');
+                
+                for(let i=0; i<6; i++) {
+                    try {
+                        const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
+                        relayCharacteristics[i] = char;
+                        createRelayButton(i);
+                        // Lettura stato iniziale (opzionale, assume 0 se fallisce)
+                        try {
+                            const val = await char.readValue();
+                            const state = new TextDecoder().decode(val) === "1";
+                            updateRelayUI(i, state);
+                        } catch(e) {}
+                    } catch(err) {
+                        console.log(`Relay ${i+1} not available.`);
+                    }
+                }
+            } catch (e) {
+                addLog("Nessun servizio Relè trovato o errore accesso.", 'error');
+            }
+
+            // 2. SETUP DATI HUB (Come prima)
+            try {
+                // Nome Hub
+                try {
+                    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+                    const nameVal = await nameChar.readValue();
+                    const nameStr = new TextDecoder().decode(nameVal);
+                    document.getElementById('liveHubName').textContent = nameStr;
+                } catch(e) {
+                    document.getElementById('liveHubName').textContent = "Hub Device";
+                }
+
+                // Sensori
+                const characteristics = await activeService.getCharacteristics();
+                let sensorCount = 0;
+                
+                characteristics.forEach((char, index) => { 
+                    if(char.uuid === CHAR_NAME_UUID) return; 
+                    sensorCount++;
+                    // Usiamo un ID progressivo basato sul loop, saltando il Nome
+                    createSensorCard(sensorCount); 
+                });
+                
+                document.getElementById('hubSensorCountBadge').textContent = `${sensorCount} Endpoint`;
+
+                let sIdx = 0;
+                for (let i = 0; i < characteristics.length; i++) {
+                    const char = characteristics[i];
+                    if(char.uuid === CHAR_NAME_UUID) continue; 
+                    sIdx++;
+                    const currentId = sIdx; // Closure capture
+
+                    try {
+                        await char.startNotifications();
+                        char.addEventListener('characteristicvaluechanged', (e) => {
+                            const val = new TextDecoder().decode(e.target.value);
+                            updateSensorCard(currentId, val);
+                        });
+                        const val = await char.readValue();
+                        updateSensorCard(currentId, new TextDecoder().decode(val));
+                        await new Promise(r => setTimeout(r, 50)); 
+                    } catch (err) {}
+                }
+            } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
+        }
+
+        // --- GESTIONE INTERFACCIA RELÈ ---
+        function createRelayButton(index) {
+            const btn = document.createElement('button');
+            btn.id = `relay-btn-${index}`;
+            btn.className = "relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
+            btn.onclick = () => toggleRelay(index);
+            btn.innerHTML = `
+                <div id="relay-led-${index}" class="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner"></div>
+                <span class="text-[10px] font-bold text-slate-300">RELÈ ${index+1}</span>
+            `;
+            relayGrid.appendChild(btn);
+        }
+
+        async function toggleRelay(index) {
+            if(!relayCharacteristics[index]) return;
+            
+            const newState = !relayStates[index];
+            const char = relayCharacteristics[index];
+            
+            // UI ottimistica (aggiorna subito)
+            updateRelayUI(index, newState);
+
+            try {
+                const val = newState ? "1" : "0";
+                await char.writeValue(new TextEncoder().encode(val));
+                addLog(`Relè ${index+1} -> ${val}`, 'tx');
+            } catch(e) {
+                addLog(`Err Relè ${index+1}: ${e.message}`, 'error');
+                // Revert UI se fallisce
+                updateRelayUI(index, !newState);
+            }
+        }
+
+        function updateRelayUI(index, state) {
+            relayStates[index] = state;
+            const btn = document.getElementById(`relay-btn-${index}`);
+            const led = document.getElementById(`relay-led-${index}`);
+            
+            if(state) {
+                btn.className = "relay-btn bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-500/50 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
+                led.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,1)] mb-1";
+            } else {
+                btn.className = "relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
+                led.className = "w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner";
+            }
+        }
+
+        // --- GESTIONE INTERFACCIA SENSORI (Invariata) ---
+        function createSensorCard(id) {
+            const div = document.createElement('div');
+            div.id = `sensor-card-${id}`;
+            div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center";
+            div.innerHTML = `<div><div class="text-[10px] text-slate-500 uppercase font-bold">Sensore ${id}</div><div id="sensor-val-${id}" class="font-mono text-xl text-white mt-1">--</div></div><div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>`;
+            sensorGrid.appendChild(div);
+        }
+
+        function updateSensorCard(id, rawString) {
+            const card = document.getElementById(`sensor-card-${id}`);
+            const valEl = document.getElementById(`sensor-val-${id}`);
+            const statusEl = document.getElementById(`sensor-status-${id}`);
+
+            if(!card) return; 
+
+            if (rawString.includes("Connected,")) {
+                valEl.textContent = rawString.split(',')[1].trim();
+                statusEl.textContent = "ONLINE";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
+                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
+            } else if (rawString.includes("Disconnected")) {
+                valEl.textContent = "--";
+                statusEl.textContent = "OFFLINE";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900";
+                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 flex justify-between items-center opacity-75";
+            } else if (rawString.includes("Not Configured")) {
+                valEl.textContent = "EMPTY";
+                statusEl.textContent = "NO CONFIG";
+                statusEl.className = "text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider";
+                card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
+            }
+        }
+
+        // --- SISTEMA ---
         function createConfigSlot(index) {
             const div = document.createElement('div');
             div.className = "bg-slate-800 rounded-xl p-4 border border-slate-700 relative";
@@ -265,10 +448,7 @@
                 const charVal = await charChar.readValue();
                 const charStr = new TextDecoder().decode(charVal);
                 if(charStr) charInput.value = charStr; else charInput.placeholder = "Empty";
-                
-                addLog(`Slot ${index}: Loaded.`, 'rx');
             } catch(e) {
-                console.log(`Slot ${index}: Errore lettura.`);
                 svcInput.placeholder = "Error";
                 charInput.placeholder = "Error";
             }
@@ -278,7 +458,6 @@
             const inputId = type === 0 ? `svc-uuid-${index}` : `char-uuid-${index}`;
             const val = document.getElementById(inputId).value.trim();
             if(!val) return alert("Inserisci un UUID valido");
-
             try {
                 const uuid = getConfigSlotUUID(index, type);
                 const char = await activeService.getCharacteristic(uuid);
@@ -291,7 +470,6 @@
         async function saveHubName() {
             const val = document.getElementById('hubNameInput').value.trim();
             if(!val) return alert("Inserisci un nome valido");
-            
             try {
                 const char = await activeService.getCharacteristic(CHAR_NAME_UUID);
                 addLog(`Saving Name: ${val}...`, 'tx');
@@ -304,11 +482,7 @@
             const val = document.getElementById('sensorCountInput').value;
             if(!val) return;
             const count = parseInt(val);
-            if (count < 1 || count > 10) {
-                alert("Errore: Il sistema supporta da 1 a 10 sensori massimo.");
-                return;
-            }
-
+            if (count < 1 || count > 10) return alert("Errore: 1-10 sensori massimo.");
             try {
                 const char = await activeService.getCharacteristic(CHAR_COUNT_UUID);
                 addLog(`Saving count: ${val}...`, 'tx');
@@ -325,96 +499,6 @@
                 await char.writeValue(new TextEncoder().encode("1"));
                 addLog("Reset requested...", 'tx');
             } catch(e) { addLog("Err Reset: " + e.message, 'error'); }
-        }
-
-        async function setupHubMode() {
-            configPanel.classList.add('hidden');
-            hubPanel.classList.remove('hidden');
-            sensorGrid.innerHTML = '';
-            
-            // Pulisci display nome precedente
-            document.getElementById('liveHubName').textContent = "--";
-
-            // MODIFICA QUI: Tentativo di lettura nome Hub in modalità operativa
-            try {
-                const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                const nameVal = await nameChar.readValue();
-                const nameStr = new TextDecoder().decode(nameVal);
-                document.getElementById('liveHubName').textContent = nameStr;
-                addLog(`Hub Name: ${nameStr}`, 'rx');
-            } catch(e) {
-                // Se la caratteristica non è accessibile in Hub Mode, fallback
-                console.warn("Impossibile leggere nome in Hub Mode (UUID mancante nel servizio Hub?)");
-                document.getElementById('liveHubName').textContent = "Hub (No Name)";
-            }
-            // FINE MODIFICA
-
-            try {
-                const characteristics = await activeService.getCharacteristics();
-                // Filtriamo le caratteristiche per contare solo i sensori reali (escludendo eventuali char di sistema come Name se presente)
-                // Se CHAR_NAME_UUID è presente in characteristics, il conteggio potrebbe essere sfalsato di 1. 
-                // Assumiamo che la logica precedente fosse basata su indice puro.
-                
-                // Aggiorniamo il badge con un conteggio approssimativo (migliorabile se avessimo UUID specifici per i sensori)
-                document.getElementById('hubSensorCountBadge').textContent = `${characteristics.length} Endpoint`;
-
-                characteristics.forEach((char, index) => { 
-                    // Evita di creare una card se la caratteristica è quella del nome
-                    if(char.uuid === CHAR_NAME_UUID) return; 
-                    createSensorCard(index + 1); 
-                });
-
-                for (let i = 0; i < characteristics.length; i++) {
-                    const char = characteristics[i];
-                    if(char.uuid === CHAR_NAME_UUID) continue; // Salta lettura stream su caratteristica nome
-
-                    try {
-                        await char.startNotifications();
-                        char.addEventListener('characteristicvaluechanged', (e) => {
-                            const val = new TextDecoder().decode(e.target.value);
-                            updateSensorCard(i + 1, val);
-                        });
-                        const val = await char.readValue();
-                        updateSensorCard(i + 1, new TextDecoder().decode(val));
-                        await new Promise(r => setTimeout(r, 100)); 
-                    } catch (err) { 
-                        // Ignora errori silenziosi su char non notificabili
-                    }
-                }
-            } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
-        }
-
-        function createSensorCard(id) {
-            const div = document.createElement('div');
-            div.id = `sensor-card-${id}`;
-            div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center";
-            div.innerHTML = `<div><div class="text-[10px] text-slate-500 uppercase font-bold">Sensore ${id}</div><div id="sensor-val-${id}" class="font-mono text-xl text-white mt-1">--</div></div><div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>`;
-            sensorGrid.appendChild(div);
-        }
-
-        function updateSensorCard(id, rawString) {
-            const card = document.getElementById(`sensor-card-${id}`);
-            const valEl = document.getElementById(`sensor-val-${id}`);
-            const statusEl = document.getElementById(`sensor-status-${id}`);
-
-            if(!card) return; // Protezione nel caso l'ID sia disallineato per skip nome
-
-            if (rawString.includes("Connected,")) {
-                valEl.textContent = rawString.split(',')[1].trim();
-                statusEl.textContent = "ONLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
-            } else if (rawString.includes("Disconnected")) {
-                valEl.textContent = "--";
-                statusEl.textContent = "OFFLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 flex justify-between items-center opacity-75";
-            } else if (rawString.includes("Not Configured")) {
-                valEl.textContent = "EMPTY";
-                statusEl.textContent = "NO CONFIG";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider";
-                card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
-            }
         }
 
         function updateStatus(state, mode = '') {
