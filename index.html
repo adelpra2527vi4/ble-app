@@ -93,7 +93,7 @@
 
         <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700 mb-4">
             <h3 class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <span>⚡ Controllo Relè</span>
+                <span>⚡ Controllo Relè (Real-time)</span>
                 <span class="w-full h-[1px] bg-slate-700"></span>
             </h3>
             <div id="relayGrid" class="grid grid-cols-3 gap-3">
@@ -168,14 +168,13 @@
         async function connect() {
             try {
                 updateStatus('connecting');
-                // Aggiunto RELAY_SVC_UUID ai servizi opzionali
                 bleDevice = await navigator.bluetooth.requestDevice({
-					filters: [
-						{ services: [CONFIG_SVC_UUID] },
-						{ services: [HUB_SVC_UUID] }
-					],
-					optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
-				});
+                    filters: [
+                        { services: [CONFIG_SVC_UUID] },
+                        { services: [HUB_SVC_UUID] }
+                    ],
+                    optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
+                });
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
                 gattServer = await bleDevice.gatt.connect();
                 const services = await gattServer.getPrimaryServices();
@@ -250,9 +249,8 @@
             
             document.getElementById('liveHubName').textContent = "--";
 
-            // 1. SETUP RELÈ
+            // 1. SETUP RELÈ (Con Notifiche Aggiornato)
             try {
-                // Recupera il servizio Relè separatamente dal servizio Hub
                 const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
                 addLog("Servizio Relè Trovato.", 'success');
                 
@@ -261,7 +259,23 @@
                         const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
                         relayCharacteristics[i] = char;
                         createRelayButton(i);
-                        // Lettura stato iniziale (opzionale, assume 0 se fallisce)
+                        
+                        // --- MODIFICA PER LIVE UPDATE ---
+                        // Abilitiamo le notifiche per ricevere cambi da pulsanti fisici o altri client
+                        try {
+                            await char.startNotifications();
+                            char.addEventListener('characteristicvaluechanged', (event) => {
+                                const raw = new TextDecoder().decode(event.target.value);
+                                const isOn = raw === "1";
+                                updateRelayUI(i, isOn);
+                                addLog(`Relè ${i+1} Sync: ${isOn ? 'ON' : 'OFF'}`, 'rx');
+                            });
+                        } catch(notifyErr) {
+                            console.warn(`Relay ${i+1} notifications not supported`);
+                        }
+                        // --------------------------------
+
+                        // Lettura stato iniziale
                         try {
                             const val = await char.readValue();
                             const state = new TextDecoder().decode(val) === "1";
@@ -275,9 +289,8 @@
                 addLog("Nessun servizio Relè trovato o errore accesso.", 'error');
             }
 
-            // 2. SETUP DATI HUB (Come prima)
+            // 2. SETUP DATI HUB (Sensori ecc)
             try {
-                // Nome Hub
                 try {
                     const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
                     const nameVal = await nameChar.readValue();
@@ -287,14 +300,12 @@
                     document.getElementById('liveHubName').textContent = "Hub Device";
                 }
 
-                // Sensori
                 const characteristics = await activeService.getCharacteristics();
                 let sensorCount = 0;
                 
                 characteristics.forEach((char, index) => { 
                     if(char.uuid === CHAR_NAME_UUID) return; 
                     sensorCount++;
-                    // Usiamo un ID progressivo basato sul loop, saltando il Nome
                     createSensorCard(sensorCount); 
                 });
                 
@@ -305,7 +316,7 @@
                     const char = characteristics[i];
                     if(char.uuid === CHAR_NAME_UUID) continue; 
                     sIdx++;
-                    const currentId = sIdx; // Closure capture
+                    const currentId = sIdx; 
 
                     try {
                         await char.startNotifications();
@@ -340,7 +351,7 @@
             const newState = !relayStates[index];
             const char = relayCharacteristics[index];
             
-            // UI ottimistica (aggiorna subito)
+            // UI ottimistica
             updateRelayUI(index, newState);
 
             try {
@@ -349,7 +360,6 @@
                 addLog(`Relè ${index+1} -> ${val}`, 'tx');
             } catch(e) {
                 addLog(`Err Relè ${index+1}: ${e.message}`, 'error');
-                // Revert UI se fallisce
                 updateRelayUI(index, !newState);
             }
         }
