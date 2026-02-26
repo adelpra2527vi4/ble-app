@@ -3,559 +3,540 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dual Core Controller</title>
+    <title>Smart Hub Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .log-container { font-family: 'Courier New', Courier, monospace; font-size: 0.75rem; }
         @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
         .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
         .sensor-card { transition: all 0.3s ease; }
-        .relay-btn { transition: all 0.2s ease; }
+        .relay-btn  { transition: all 0.2s ease; }
+        /* Griglia campi sensore */
+        .field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+        .field-pill { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem;
+                      padding: 0.35rem 0.5rem; display:flex; flex-direction:column; }
+        .field-key  { font-size: 0.6rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.05em; }
+        .field-val  { font-size: 0.9rem; font-family: 'Courier New', monospace; color: #f1f5f9; font-weight: 700; }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
 
-    <header class="text-center mb-6 pt-2">
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            Smart Hub Controller
-        </h1>
-        <p class="text-xs text-slate-500 mt-1">Dual Core BLE Manager</p>
-    </header>
+<header class="text-center mb-6 pt-2">
+    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+        Smart Hub Controller
+    </h1>
+    <p class="text-xs text-slate-500 mt-1">Universal Beacon Manager</p>
+</header>
 
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
-        <div class="flex items-center justify-between mb-4">
+<!-- Connessione -->
+<div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+            <div class="relative flex items-center justify-center w-3 h-3">
+                <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
+                <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
+            </div>
+            <div class="flex flex-col">
+                <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
+                <span id="modeText" class="text-[10px] text-slate-500 font-mono">--</span>
+            </div>
+        </div>
+    </div>
+    <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
+        📡 Connetti Dispositivo
+    </button>
+    <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
+        ❌ Scollega
+    </button>
+</div>
+
+<!-- CONFIG PANEL -->
+<main id="configPanel" class="hidden space-y-4">
+    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
+        <h2 class="text-xs font-bold text-blue-400 mb-4 uppercase tracking-widest border-b border-slate-700 pb-2">Impostazioni Sistema</h2>
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <label class="text-sm text-slate-300">Nome Hub:</label>
             <div class="flex items-center gap-2">
-                <div class="relative flex items-center justify-center w-3 h-3">
-                    <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
-                    <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
-                </div>
-                <div class="flex flex-col">
-                    <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
-                    <span id="modeText" class="text-[10px] text-slate-500 font-mono">--</span>
-                </div>
+                <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="w-32 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm font-mono focus:border-blue-500 outline-none">
+                <button id="saveNameBtn" class="bg-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-500 active:scale-95">OK</button>
             </div>
         </div>
-        
-        <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
-            📡 Connetti Dispositivo
-        </button>
-        <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
-            ❌ Scollega
-        </button>
+        <div class="flex items-center justify-between gap-4">
+            <label class="text-sm text-slate-300">Numero Sensori:</label>
+            <div class="flex items-center gap-2">
+                <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
+                <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
+            </div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-2 italic">* Cambiare il numero sensori riavvia il dispositivo.</p>
     </div>
+    <div id="configSlotsContainer" class="space-y-4"></div>
+    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
+        <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
+        <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+            ⚠️ Factory Reset
+        </button>
+        <p id="resetFeedback" class="text-[10px] text-center mt-2 text-slate-500 h-4"></p>
+    </div>
+</main>
 
-    <main id="configPanel" class="hidden space-y-4">
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-            <h2 class="text-xs font-bold text-blue-400 mb-4 uppercase tracking-widest border-b border-slate-700 pb-2">Impostazioni Sistema</h2>
-            
-            <div class="flex items-center justify-between gap-4 mb-4">
-                <label class="text-sm text-slate-300">Nome Hub:</label>
+<!-- HUB PANEL -->
+<main id="hubPanel" class="hidden">
+    <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700/50">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Live Data Stream</h2>
                 <div class="flex items-center gap-2">
-                    <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="w-32 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm font-mono focus:border-blue-500 outline-none">
-                    <button id="saveNameBtn" class="bg-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-500 active:scale-95">OK</button>
+                    <span class="text-xs text-slate-500">Device:</span>
+                    <span id="liveHubName" class="text-lg font-mono text-white font-bold">--</span>
                 </div>
             </div>
-
-            <div class="flex items-center justify-between gap-4">
-                <label class="text-sm text-slate-300">Numero Sensori:</label>
-                <div class="flex items-center gap-2">
-                    <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
-                    <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
-                </div>
-            </div>
-            <p class="text-[10px] text-slate-500 mt-2 italic">* Cambiare il numero sensori riavvia il dispositivo.</p>
-        </div>
-
-        <div id="configSlotsContainer" class="space-y-4"></div>
-
-        <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
-            <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
-            <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                ⚠️ Factory Reset
-            </button>
-            <p id="resetFeedback" class="text-[10px] text-center mt-2 text-slate-500 h-4"></p>
-        </div>
-    </main>
-
-    <main id="hubPanel" class="hidden">
-        <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700/50">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h2 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Live Data Stream</h2>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-500">Device ID:</span>
-                        <span id="liveHubName" class="text-lg font-mono text-white font-bold tracking-tight">--</span>
-                    </div>
-                </div>
-                <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700" id="hubSensorCountBadge">0 Sensori</span>
-            </div>
-        </div>
-
-        <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700 mb-4">
-            <h3 class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <span>⚡ Controllo Relè (Real-time)</span>
-                <span class="w-full h-[1px] bg-slate-700"></span>
-            </h3>
-            <div id="relayGrid" class="grid grid-cols-3 gap-3">
-                </div>
-        </div>
-
-        <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
-    </main>
-
-    <div class="mt-auto pt-6">
-        <div class="flex justify-between items-center mb-1">
-            <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
-            <button id="clearLog" class="text-[10px] text-blue-500 hover:text-blue-400">Pulisci</button>
-        </div>
-        <div id="log" class="log-container bg-black/40 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-snug">
-            <div class="text-slate-600 italic">> Ready.</div>
+            <span id="hubSensorCountBadge" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700">0 Sensori</span>
         </div>
     </div>
 
-    <script>
-        // --- CONFIGURAZIONE UUID ---
-        const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
-        const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
-        
-        // --- NUOVI UUID RELE' ---
-        const RELAY_SVC_UUID  = 'aaaa0001-0000-1000-8000-00805f9b34fb';
-        const RELAY_UUIDS = [
-            'aaaa0001-0000-1000-8000-00805f9b0001',
-            'aaaa0001-0000-1000-8000-00805f9b0002',
-            'aaaa0001-0000-1000-8000-00805f9b0003',
-            'aaaa0001-0000-1000-8000-00805f9b0004',
-            'aaaa0001-0000-1000-8000-00805f9b0005',
-            'aaaa0001-0000-1000-8000-00805f9b0006'
-        ];
+    <!-- Relè -->
+    <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700 mb-4">
+        <h3 class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <span>⚡ Controllo Relè</span>
+            <span class="w-full h-[1px] bg-slate-700"></span>
+        </h3>
+        <div id="relayGrid" class="grid grid-cols-3 gap-3"></div>
+    </div>
 
-        // UUID Caratteristiche aggiornati
-        const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff'; 
-        const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa'; 
-        const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe'; 
+    <!-- Sensori -->
+    <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
+</main>
 
-        let bleDevice = null;
-        let gattServer = null;
-        let activeService = null; // Servizio principale attivo (Config o Hub)
-        
-        // Stato locale dei relè
-        let relayStates = [false, false, false, false, false, false];
-        let relayCharacteristics = []; // Array per memorizzare i puntatori alle char dei relè
+<!-- Log -->
+<div class="mt-auto pt-6">
+    <div class="flex justify-between items-center mb-1">
+        <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
+        <button id="clearLog" class="text-[10px] text-blue-500 hover:text-blue-400">Pulisci</button>
+    </div>
+    <div id="log" class="log-container bg-black/40 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-snug">
+        <div class="text-slate-600 italic">> Ready.</div>
+    </div>
+</div>
 
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const logEl = document.getElementById('log');
-        const configPanel = document.getElementById('configPanel');
-        const hubPanel = document.getElementById('hubPanel');
-        const sensorGrid = document.getElementById('sensorGrid');
-        const relayGrid = document.getElementById('relayGrid');
-        const configSlotsContainer = document.getElementById('configSlotsContainer');
-        
-        function addLog(msg, type = 'info') {
-            const entry = document.createElement('div');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : (type === 'rx' ? 'text-cyan-400' : 'text-slate-400'));
-            entry.className = `${color}`;
-            entry.textContent = `${type === 'rx' ? 'RX < ' : (type === 'tx' ? 'TX > ' : '> ')}${msg}`;
-            logEl.appendChild(entry);
-            logEl.scrollTop = logEl.scrollHeight;
+<script>
+// --- UUID ---
+const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
+const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
+const RELAY_SVC_UUID  = 'aaaa0001-0000-1000-8000-00805f9b34fb';
+const RELAY_UUIDS = [
+    'aaaa0001-0000-1000-8000-00805f9b0001','aaaa0001-0000-1000-8000-00805f9b0002',
+    'aaaa0001-0000-1000-8000-00805f9b0003','aaaa0001-0000-1000-8000-00805f9b0004',
+    'aaaa0001-0000-1000-8000-00805f9b0005','aaaa0001-0000-1000-8000-00805f9b0006'
+];
+const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff';
+const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa';
+const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
+
+let bleDevice=null, gattServer=null, activeService=null;
+let relayStates=[false,false,false,false,false,false];
+let relayCharacteristics=[];
+
+const connectBtn        = document.getElementById('connectBtn');
+const disconnectBtn     = document.getElementById('disconnectBtn');
+const logEl             = document.getElementById('log');
+const configPanel       = document.getElementById('configPanel');
+const hubPanel          = document.getElementById('hubPanel');
+const sensorGrid        = document.getElementById('sensorGrid');
+const relayGrid         = document.getElementById('relayGrid');
+const configSlotsContainer = document.getElementById('configSlotsContainer');
+
+// ================================================================
+//  PARSING PAYLOAD
+//  Converte "temp=22.45;hum=58;rssi=-72" in oggetto strutturato
+//  con label, unità e icona per ogni campo noto.
+// ================================================================
+const FIELD_META = {
+    temp:   { label:'Temperatura', unit:'°C',  icon:'🌡️', color:'text-orange-300' },
+    hum:    { label:'Umidità',     unit:'%',   icon:'💧', color:'text-blue-300'   },
+    pir:    { label:'Presenza',    unit:'',    icon:'👁️', color:'text-yellow-300' },
+    mov:    { label:'Movimento',   unit:'',    icon:'🏃', color:'text-yellow-300' },
+    mag:    { label:'Magnete',     unit:'',    icon:'🔵', color:'text-blue-400'   },
+    di:     { label:'Ingresso',    unit:'',    icon:'🔌', color:'text-green-300'  },
+    ax:     { label:'Acc X',       unit:'mg',  icon:'📐', color:'text-purple-300' },
+    ay:     { label:'Acc Y',       unit:'mg',  icon:'📐', color:'text-purple-300' },
+    az:     { label:'Acc Z',       unit:'mg',  icon:'📐', color:'text-purple-300' },
+    cnt:    { label:'Contatore',   unit:'',    icon:'🔢', color:'text-slate-300'  },
+    rssi:   { label:'RSSI',        unit:'dBm', icon:'📶', color:'text-slate-500'  },
+    ela_id: { label:'ELA ID',      unit:'',    icon:'🔧', color:'text-slate-400'  },
+    mfr_cid:{ label:'Mfr CID',     unit:'',    icon:'🏭', color:'text-slate-400'  },
+    raw:    { label:'Raw HEX',     unit:'',    icon:'🗂️', color:'text-slate-500'  },
+};
+
+function parsePayload(rawString) {
+    // Formato: "Connected, key=val;key=val;..."
+    // oppure stringhe legacy: "Online, ...", "Disconnected", ecc.
+    const fields = {};
+    let isConnected = false;
+    let isOffline   = false;
+    let isNotConfig = false;
+
+    if (rawString.includes('Connected')) {
+        isConnected = true;
+        const dataPart = rawString.split(',').slice(1).join(',').trim();
+        dataPart.split(';').forEach(pair => {
+            const eq = pair.indexOf('=');
+            if (eq < 0) return;
+            const k = pair.substring(0, eq).trim();
+            const v = pair.substring(eq + 1).trim();
+            if (k) fields[k] = v;
+        });
+    } else if (rawString.includes('Disconnected') || rawString.includes('Offline')) {
+        isOffline = true;
+    } else {
+        isNotConfig = true;
+    }
+
+    return { isConnected, isOffline, isNotConfig, fields };
+}
+
+// ================================================================
+//  SENSOR CARD — mostra tutti i campi dinamicamente
+// ================================================================
+function createSensorCard(id) {
+    const div = document.createElement('div');
+    div.id = `sensor-card-${id}`;
+    div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700";
+    div.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Sensore ${id}</div>
+            <div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>
+        </div>
+        <div id="sensor-fields-${id}" class="field-grid"></div>
+    `;
+    sensorGrid.appendChild(div);
+}
+
+function updateSensorCard(id, rawString) {
+    const card    = document.getElementById(`sensor-card-${id}`);
+    const statusEl= document.getElementById(`sensor-status-${id}`);
+    const fieldsEl= document.getElementById(`sensor-fields-${id}`);
+    if (!card) return;
+
+    const { isConnected, isOffline, isNotConfig, fields } = parsePayload(rawString);
+
+    if (isConnected) {
+        // Stato card
+        statusEl.textContent = 'ONLINE';
+        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900';
+        card.className       = 'sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
+
+        // Aggiorna i campi
+        fieldsEl.innerHTML = '';
+        const keys = Object.keys(fields);
+        if (keys.length === 0) {
+            fieldsEl.innerHTML = '<span class="text-xs text-slate-500 italic">Nessun dato</span>';
+        } else {
+            keys.forEach(k => {
+                const meta  = FIELD_META[k] || { label: k, unit: '', icon: '📌', color: 'text-slate-300' };
+                const pill  = document.createElement('div');
+                pill.className = 'field-pill';
+                pill.innerHTML = `
+                    <span class="field-key">${meta.icon} ${meta.label}</span>
+                    <span class="field-val ${meta.color}">${fields[k]}${meta.unit ? '<span class="text-[10px] font-normal text-slate-500 ml-1">' + meta.unit + '</span>' : ''}</span>
+                `;
+                fieldsEl.appendChild(pill);
+            });
         }
+    } else if (isOffline) {
+        statusEl.textContent = 'OFFLINE';
+        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900';
+        card.className       = 'sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 opacity-75';
+        fieldsEl.innerHTML   = '<span class="text-xs text-slate-500 italic">In attesa del beacon...</span>';
+    } else {
+        statusEl.textContent = 'NON CONFIG.';
+        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider';
+        card.className       = 'sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed opacity-50';
+        fieldsEl.innerHTML   = '';
+    }
+}
 
-        function getConfigSlotUUID(index, type) {
-            const padding = index < 10 ? "00000" : "0000";
-            return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
+// ================================================================
+//  CONNESSIONE BLE
+// ================================================================
+function addLog(msg, type='info') {
+    const entry = document.createElement('div');
+    const color = type==='error'?'text-red-400':type==='success'?'text-emerald-400':type==='rx'?'text-cyan-400':'text-slate-400';
+    entry.className = color;
+    entry.textContent = `${type==='rx'?'RX < ':type==='tx'?'TX > ':'> '}${msg}`;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function getConfigSlotUUID(index, type) {
+    const padding = index < 10 ? "00000" : "0000";
+    return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
+}
+
+async function connect() {
+    try {
+        updateStatus('connecting');
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters:[{services:[CONFIG_SVC_UUID]},{services:[HUB_SVC_UUID]}],
+            optionalServices:[CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
+        });
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        gattServer = await bleDevice.gatt.connect();
+        const services = await gattServer.getPrimaryServices();
+        let mode='UNKNOWN';
+        for (const s of services) {
+            if (s.uuid===CONFIG_SVC_UUID){ mode='CONFIG'; activeService=s; }
+            else if (s.uuid===HUB_SVC_UUID){ mode='HUB'; activeService=s; }
         }
+        if (mode==='CONFIG') await setupConfigMode();
+        else if (mode==='HUB') await setupHubMode();
+        else throw new Error("Nessun servizio compatibile trovato.");
+        updateStatus('connected', mode);
+        addLog(`Connesso: ${mode}`, 'success');
+    } catch(error) {
+        addLog(`Errore: ${error.message}`, 'error');
+        updateStatus('disconnected');
+    }
+}
 
-        async function connect() {
-            try {
-                updateStatus('connecting');
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { services: [CONFIG_SVC_UUID] },
-                        { services: [HUB_SVC_UUID] }
-                    ],
-                    optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
-                });
-                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                gattServer = await bleDevice.gatt.connect();
-                const services = await gattServer.getPrimaryServices();
-                
-                let mode = 'UNKNOWN';
-                for (const service of services) {
-                    if (service.uuid === CONFIG_SVC_UUID) { mode = 'CONFIG'; activeService = service; }
-                    else if (service.uuid === HUB_SVC_UUID) { mode = 'HUB'; activeService = service; }
+async function setupConfigMode() {
+    configPanel.classList.remove('hidden');
+    hubPanel.classList.add('hidden');
+    configSlotsContainer.innerHTML='';
+    try {
+        const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
+        const count = parseInt(new TextDecoder().decode(await countChar.readValue()));
+        document.getElementById('sensorCountInput').value = count;
+        addLog(`Config: ${count} sensori.`, 'rx');
+        try {
+            const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+            document.getElementById('hubNameInput').value = new TextDecoder().decode(await nameChar.readValue());
+        } catch(e){}
+        for(let i=1;i<=count;i++){
+            createConfigSlot(i);
+            await readConfigSlotValues(i);
+            await new Promise(r=>setTimeout(r,50));
+        }
+        const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
+        if(resetChar.properties.notify){
+            await resetChar.startNotifications();
+            resetChar.addEventListener('characteristicvaluechanged',(e)=>{
+                if(new TextDecoder().decode(e.target.value)==="0"){
+                    document.getElementById('resetFeedback').textContent="Reset Completato!";
+                    document.getElementById('resetFeedback').className="text-[10px] text-center mt-2 text-emerald-400 font-bold";
+                    addLog("Factory Reset Confermato.", 'success');
                 }
-
-                if (mode === 'CONFIG') await setupConfigMode();
-                else if (mode === 'HUB') await setupHubMode();
-                else throw new Error("Nessun servizio compatibile trovato.");
-
-                updateStatus('connected', mode);
-                addLog(`Connesso: ${mode}`, 'success');
-            } catch (error) {
-                console.error(error);
-                addLog(`Errore: ${error.message}`, 'error');
-                updateStatus('disconnected');
-            }
+            });
         }
+    } catch(e){ addLog("Errore config: "+e.message,'error'); }
+}
 
-        async function setupConfigMode() {
-            configPanel.classList.remove('hidden');
-            hubPanel.classList.add('hidden');
-            configSlotsContainer.innerHTML = ''; 
+async function setupHubMode() {
+    configPanel.classList.add('hidden');
+    hubPanel.classList.remove('hidden');
+    sensorGrid.innerHTML=''; relayGrid.innerHTML=''; relayCharacteristics=[];
+    document.getElementById('liveHubName').textContent='--';
 
+    // Relè
+    try {
+        const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
+        addLog("Servizio Relè trovato.", 'success');
+        for(let i=0;i<6;i++){
             try {
-                const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-                const value = await countChar.readValue();
-                const count = parseInt(new TextDecoder().decode(value));
-                document.getElementById('sensorCountInput').value = count;
-                addLog(`Config: ${count} sensori attivi.`, 'rx');
-
+                const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
+                relayCharacteristics[i]=char;
+                createRelayButton(i);
                 try {
-                    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                    const nameVal = await nameChar.readValue();
-                    const nameStr = new TextDecoder().decode(nameVal);
-                    document.getElementById('hubNameInput').value = nameStr;
-                } catch (e) { addLog("Warning: Impossibile leggere Nome Hub", 'error'); }
-
-                for (let i = 1; i <= count; i++) {
-                    createConfigSlot(i);
-                    await readConfigSlotValues(i);
-                    await new Promise(r => setTimeout(r, 50));
-                }
-
-                const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
-                if (resetChar.properties.notify) {
-                    await resetChar.startNotifications();
-                    resetChar.addEventListener('characteristicvaluechanged', (e) => {
-                        const val = new TextDecoder().decode(e.target.value);
-                        if(val === "0") {
-                            document.getElementById('resetFeedback').textContent = "Reset Completato!";
-                            document.getElementById('resetFeedback').className = "text-[10px] text-center mt-2 text-emerald-400 font-bold";
-                            addLog("Factory Reset Confermato.", 'success');
-                            document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
-                            document.getElementById('hubNameInput').value = "Hub-01";
-                        }
+                    await char.startNotifications();
+                    char.addEventListener('characteristicvaluechanged',(event)=>{
+                        updateRelayUI(i, new TextDecoder().decode(event.target.value)==="1");
                     });
-                }
-            } catch (e) { addLog("Errore config setup: " + e.message, 'error'); }
-        }
-
-        async function setupHubMode() {
-            configPanel.classList.add('hidden');
-            hubPanel.classList.remove('hidden');
-            sensorGrid.innerHTML = '';
-            relayGrid.innerHTML = ''; // Pulisci griglia relè
-            relayCharacteristics = [];
-            
-            document.getElementById('liveHubName').textContent = "--";
-
-            // 1. SETUP RELÈ (Con Notifiche Aggiornato)
-            try {
-                const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
-                addLog("Servizio Relè Trovato.", 'success');
-                
-                for(let i=0; i<6; i++) {
-                    try {
-                        const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
-                        relayCharacteristics[i] = char;
-                        createRelayButton(i);
-                        
-                        // --- MODIFICA PER LIVE UPDATE ---
-                        // Abilitiamo le notifiche per ricevere cambi da pulsanti fisici o altri client
-                        try {
-                            await char.startNotifications();
-                            char.addEventListener('characteristicvaluechanged', (event) => {
-                                const raw = new TextDecoder().decode(event.target.value);
-                                const isOn = raw === "1";
-                                updateRelayUI(i, isOn);
-                                addLog(`Relè ${i+1} Sync: ${isOn ? 'ON' : 'OFF'}`, 'rx');
-                            });
-                        } catch(notifyErr) {
-                            console.warn(`Relay ${i+1} notifications not supported`);
-                        }
-                        // --------------------------------
-
-                        // Lettura stato iniziale
-                        try {
-                            const val = await char.readValue();
-                            const state = new TextDecoder().decode(val) === "1";
-                            updateRelayUI(i, state);
-                        } catch(e) {}
-                    } catch(err) {
-                        console.log(`Relay ${i+1} not available.`);
-                    }
-                }
-            } catch (e) {
-                addLog("Nessun servizio Relè trovato o errore accesso.", 'error');
-            }
-
-            // 2. SETUP DATI HUB (Sensori ecc)
-            try {
+                } catch(e){}
                 try {
-                    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                    const nameVal = await nameChar.readValue();
-                    const nameStr = new TextDecoder().decode(nameVal);
-                    document.getElementById('liveHubName').textContent = nameStr;
-                } catch(e) {
-                    document.getElementById('liveHubName').textContent = "Hub Device";
-                }
+                    updateRelayUI(i, new TextDecoder().decode(await char.readValue())==="1");
+                } catch(e){}
+            } catch(e){}
+        }
+    } catch(e){ addLog("Nessun servizio Relè.", 'error'); }
 
-                const characteristics = await activeService.getCharacteristics();
-                let sensorCount = 0;
-                
-                characteristics.forEach((char, index) => { 
-                    if(char.uuid === CHAR_NAME_UUID) return; 
-                    sensorCount++;
-                    createSensorCard(sensorCount); 
+    // Sensori
+    try {
+        try {
+            const nc = await activeService.getCharacteristic(CHAR_NAME_UUID);
+            document.getElementById('liveHubName').textContent = new TextDecoder().decode(await nc.readValue());
+        } catch(e){ document.getElementById('liveHubName').textContent='Hub Device'; }
+
+        const characteristics = await activeService.getCharacteristics();
+        let sensorCount=0;
+        characteristics.forEach(c=>{ if(c.uuid!==CHAR_NAME_UUID) sensorCount++; });
+        document.getElementById('hubSensorCountBadge').textContent=`${sensorCount} Sensori`;
+
+        let sIdx=0;
+        for(let i=0;i<characteristics.length;i++){
+            const char=characteristics[i];
+            if(char.uuid===CHAR_NAME_UUID) continue;
+            sIdx++;
+            const cid=sIdx;
+            createSensorCard(cid);
+            try {
+                await char.startNotifications();
+                char.addEventListener('characteristicvaluechanged',(e)=>{
+                    const val = new TextDecoder().decode(e.target.value);
+                    updateSensorCard(cid, val);
+                    addLog(`S${cid}: ${val}`, 'rx');
                 });
-                
-                document.getElementById('hubSensorCountBadge').textContent = `${sensorCount} Endpoint`;
-
-                let sIdx = 0;
-                for (let i = 0; i < characteristics.length; i++) {
-                    const char = characteristics[i];
-                    if(char.uuid === CHAR_NAME_UUID) continue; 
-                    sIdx++;
-                    const currentId = sIdx; 
-
-                    try {
-                        await char.startNotifications();
-                        char.addEventListener('characteristicvaluechanged', (e) => {
-                            const val = new TextDecoder().decode(e.target.value);
-                            updateSensorCard(currentId, val);
-                        });
-                        const val = await char.readValue();
-                        updateSensorCard(currentId, new TextDecoder().decode(val));
-                        await new Promise(r => setTimeout(r, 50)); 
-                    } catch (err) {}
-                }
-            } catch(e) { addLog("Err Hub Setup: " + e.message, 'error'); }
+                updateSensorCard(cid, new TextDecoder().decode(await char.readValue()));
+                await new Promise(r=>setTimeout(r,50));
+            } catch(e){}
         }
+    } catch(e){ addLog("Err Hub: "+e.message,'error'); }
+}
 
-        // --- GESTIONE INTERFACCIA RELÈ ---
-        function createRelayButton(index) {
-            const btn = document.createElement('button');
-            btn.id = `relay-btn-${index}`;
-            btn.className = "relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
-            btn.onclick = () => toggleRelay(index);
-            btn.innerHTML = `
-                <div id="relay-led-${index}" class="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner"></div>
-                <span class="text-[10px] font-bold text-slate-300">RELÈ ${index+1}</span>
-            `;
-            relayGrid.appendChild(btn);
-        }
+// --- Relè ---
+function createRelayButton(index) {
+    const btn=document.createElement('button');
+    btn.id=`relay-btn-${index}`;
+    btn.className="relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
+    btn.onclick=()=>toggleRelay(index);
+    btn.innerHTML=`<div id="relay-led-${index}" class="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner"></div>
+                   <span class="text-[10px] font-bold text-slate-300">RELÈ ${index+1}</span>`;
+    relayGrid.appendChild(btn);
+}
+async function toggleRelay(index) {
+    if(!relayCharacteristics[index]) return;
+    const ns=!relayStates[index];
+    updateRelayUI(index,ns);
+    try {
+        await relayCharacteristics[index].writeValue(new TextEncoder().encode(ns?"1":"0"));
+        addLog(`Relè ${index+1} -> ${ns?1:0}`,'tx');
+    } catch(e){ addLog(`Err Relè ${index+1}: ${e.message}`,'error'); updateRelayUI(index,!ns); }
+}
+function updateRelayUI(index,state) {
+    relayStates[index]=state;
+    const btn=document.getElementById(`relay-btn-${index}`);
+    const led=document.getElementById(`relay-led-${index}`);
+    if(state){
+        btn.className="relay-btn bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-500/50 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
+        led.className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,1)] mb-1";
+    } else {
+        btn.className="relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
+        led.className="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner";
+    }
+}
 
-        async function toggleRelay(index) {
-            if(!relayCharacteristics[index]) return;
-            
-            const newState = !relayStates[index];
-            const char = relayCharacteristics[index];
-            
-            // UI ottimistica
-            updateRelayUI(index, newState);
-
-            try {
-                const val = newState ? "1" : "0";
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog(`Relè ${index+1} -> ${val}`, 'tx');
-            } catch(e) {
-                addLog(`Err Relè ${index+1}: ${e.message}`, 'error');
-                updateRelayUI(index, !newState);
-            }
-        }
-
-        function updateRelayUI(index, state) {
-            relayStates[index] = state;
-            const btn = document.getElementById(`relay-btn-${index}`);
-            const led = document.getElementById(`relay-led-${index}`);
-            
-            if(state) {
-                btn.className = "relay-btn bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-500/50 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
-                led.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,1)] mb-1";
-            } else {
-                btn.className = "relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
-                led.className = "w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner";
-            }
-        }
-
-        // --- GESTIONE INTERFACCIA SENSORI (Invariata) ---
-        function createSensorCard(id) {
-            const div = document.createElement('div');
-            div.id = `sensor-card-${id}`;
-            div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center";
-            div.innerHTML = `<div><div class="text-[10px] text-slate-500 uppercase font-bold">Sensore ${id}</div><div id="sensor-val-${id}" class="font-mono text-xl text-white mt-1">--</div></div><div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>`;
-            sensorGrid.appendChild(div);
-        }
-
-        function updateSensorCard(id, rawString) {
-            const card = document.getElementById(`sensor-card-${id}`);
-            const valEl = document.getElementById(`sensor-val-${id}`);
-            const statusEl = document.getElementById(`sensor-status-${id}`);
-
-            if(!card) return; 
-
-            if (rawString.includes("Connected,")) {
-                valEl.textContent = rawString.split(',')[1].trim();
-                statusEl.textContent = "ONLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] flex justify-between items-center";
-            } else if (rawString.includes("Disconnected")) {
-                valEl.textContent = "--";
-                statusEl.textContent = "OFFLINE";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900";
-                card.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 flex justify-between items-center opacity-75";
-            } else if (rawString.includes("Not Configured")) {
-                valEl.textContent = "EMPTY";
-                statusEl.textContent = "NO CONFIG";
-                statusEl.className = "text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider";
-                card.className = "sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed flex justify-between items-center opacity-50";
-            }
-        }
-
-        // --- SISTEMA ---
-        function createConfigSlot(index) {
-            const div = document.createElement('div');
-            div.className = "bg-slate-800 rounded-xl p-4 border border-slate-700 relative";
-            div.innerHTML = `
-                <div class="absolute top-2 right-3 text-[10px] font-bold text-slate-600">SLOT ${index}</div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-[10px] text-blue-300 uppercase font-bold">Service UUID</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="svc-uuid-${index}" placeholder="Waiting..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
-                            <button onclick="saveSlotUUID(${index}, 0)" class="bg-slate-700 hover:bg-blue-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-indigo-300 uppercase font-bold">Char UUID</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="char-uuid-${index}" placeholder="Waiting..." class="flex-1 bg-slate-900 border border-slate-600 rounded text-xs px-2 py-1 font-mono text-slate-300 focus:border-blue-500 outline-none">
-                            <button onclick="saveSlotUUID(${index}, 1)" class="bg-slate-700 hover:bg-indigo-600 text-white px-3 rounded text-xs font-bold transition-colors">💾</button>
-                        </div>
-                    </div>
+// --- Config slot ---
+function createConfigSlot(index) {
+    const div=document.createElement('div');
+    div.className="bg-slate-800 rounded-xl p-4 border border-slate-700 relative hover:border-slate-500 transition-all";
+    div.innerHTML=`
+        <div class="absolute top-2 right-3 text-[10px] font-bold text-slate-500">SLOT ${index}</div>
+        <div class="space-y-3 mt-2">
+            <div>
+                <label class="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">MAC Address Sensore</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="text" id="mac-address-${index}" placeholder="In attesa..." maxlength="17"
+                        class="flex-1 bg-slate-900 border border-slate-600 rounded-lg text-sm px-3 py-2 font-mono text-slate-200 focus:border-emerald-500 outline-none uppercase transition-all">
+                    <button onclick="saveSlotMAC(${index})" class="bg-slate-700 hover:bg-emerald-600 text-white px-4 rounded-lg text-xs font-bold transition-all active:scale-95">SALVA</button>
                 </div>
-            `;
-            configSlotsContainer.appendChild(div);
-        }
+                <p class="text-[9px] text-slate-500 mt-1 italic">Formato: AA:BB:CC:11:22:33</p>
+            </div>
+        </div>`;
+    configSlotsContainer.appendChild(div);
+}
+async function readConfigSlotValues(index) {
+    const macInput=document.getElementById(`mac-address-${index}`);
+    macInput.placeholder="Lettura...";
+    try {
+        const c=await activeService.getCharacteristic(getConfigSlotUUID(index,2));
+        const v=new TextDecoder().decode(await c.readValue());
+        macInput.value = v.length>=12 ? v.toUpperCase() : '';
+        if(!macInput.value) macInput.placeholder="Slot Vuoto";
+    } catch(e){ macInput.placeholder="Errore Lettura"; }
+}
+window.saveSlotMAC = async function(index) {
+    let val=document.getElementById(`mac-address-${index}`).value.trim().toUpperCase();
+    if(!/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/.test(val))
+        return alert("⚠️ Formato MAC non valido!\nEs: AA:BB:CC:DD:EE:FF");
+    val=val.replace(/-/g,':');
+    document.getElementById(`mac-address-${index}`).value=val;
+    try {
+        const char=await activeService.getCharacteristic(getConfigSlotUUID(index,2));
+        addLog(`Scrittura MAC Slot ${index}...`,'tx');
+        await char.writeValue(new TextEncoder().encode(val.toLowerCase()));
+        addLog(`Slot ${index}: ${val}`,'success');
+        const btn=document.querySelector(`#mac-address-${index}`).nextElementSibling;
+        const orig=btn.className;
+        btn.className="bg-emerald-500 text-white px-4 rounded-lg text-xs font-bold";
+        btn.textContent="✔ FATTO";
+        setTimeout(()=>{ btn.className=orig; btn.textContent="SALVA"; },1500);
+    } catch(e){ addLog(`Err Slot ${index}: ${e.message}`,'error'); }
+};
 
-        async function readConfigSlotValues(index) {
-            const svcInput = document.getElementById(`svc-uuid-${index}`);
-            const charInput = document.getElementById(`char-uuid-${index}`);
-            svcInput.placeholder = "Reading...";
-            charInput.placeholder = "Reading...";
+async function saveHubName() {
+    const val=document.getElementById('hubNameInput').value.trim();
+    if(!val) return alert("Inserisci un nome valido");
+    try {
+        const c=await activeService.getCharacteristic(CHAR_NAME_UUID);
+        await c.writeValue(new TextEncoder().encode(val));
+        addLog("Nome salvato!",'success');
+    } catch(e){ addLog("Err nome: "+e.message,'error'); }
+}
+async function saveSensorCount() {
+    const val=document.getElementById('sensorCountInput').value;
+    if(!val) return;
+    const n=parseInt(val);
+    if(n<1||n>10) return alert("1-10 sensori.");
+    try {
+        const c=await activeService.getCharacteristic(CHAR_COUNT_UUID);
+        await c.writeValue(new TextEncoder().encode(val));
+        addLog("Salvato. Riavvio...",'success');
+        setTimeout(()=>{ if(bleDevice&&bleDevice.gatt.connected) bleDevice.gatt.disconnect(); },1500);
+    } catch(e){ addLog("Err count: "+e.message,'error'); }
+}
+async function performReset() {
+    if(!confirm("Reset TUTTA la configurazione?")) return;
+    try {
+        const c=await activeService.getCharacteristic(CHAR_RESET_UUID);
+        await c.writeValue(new TextEncoder().encode("1"));
+        addLog("Reset richiesto...",'tx');
+    } catch(e){ addLog("Err reset: "+e.message,'error'); }
+}
 
-            try {
-                const svcCharUUID = getConfigSlotUUID(index, 0);
-                const svcChar = await activeService.getCharacteristic(svcCharUUID);
-                const svcVal = await svcChar.readValue();
-                const svcStr = new TextDecoder().decode(svcVal);
-                if(svcStr) svcInput.value = svcStr; else svcInput.placeholder = "Empty";
-                
-                await new Promise(r => setTimeout(r, 50));
+function updateStatus(state, mode='') {
+    const st=document.getElementById('statusText');
+    const ic=document.getElementById('statusIcon');
+    const rn=document.getElementById('statusRing');
+    const mt=document.getElementById('modeText');
+    if(state==='connecting'){
+        st.textContent="Connessione..."; rn.classList.remove('hidden');
+        ic.className="relative inline-flex w-3 h-3 rounded-full bg-blue-500";
+        connectBtn.disabled=true; connectBtn.textContent="Ricerca...";
+    } else if(state==='connected'){
+        st.textContent="Connesso"; st.className="text-xs font-bold uppercase tracking-tight text-emerald-400";
+        rn.classList.add('hidden');
+        ic.className="relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+        mt.textContent=mode==='CONFIG'?"MODALITÀ CONFIGURAZIONE":"MODALITÀ OPERATIVA";
+        mt.className=mode==='CONFIG'?"text-[10px] text-yellow-400 font-bold font-mono":"text-[10px] text-blue-300 font-bold font-mono";
+        connectBtn.classList.add('hidden'); disconnectBtn.classList.remove('hidden');
+    } else {
+        st.textContent="Disconnesso"; st.className="text-xs font-bold uppercase tracking-tight text-slate-400";
+        rn.classList.add('hidden');
+        ic.className="relative inline-flex w-3 h-3 rounded-full bg-red-500";
+        mt.textContent="--"; connectBtn.disabled=false;
+        connectBtn.textContent="📡 Connetti Dispositivo";
+        connectBtn.classList.remove('hidden'); disconnectBtn.classList.add('hidden');
+        configPanel.classList.add('hidden'); hubPanel.classList.add('hidden');
+        sensorGrid.innerHTML=''; configSlotsContainer.innerHTML='';
+    }
+}
+function onDisconnected(){ updateStatus('disconnected'); addLog('Connessione persa.','warn'); }
 
-                const charCharUUID = getConfigSlotUUID(index, 1);
-                const charChar = await activeService.getCharacteristic(charCharUUID);
-                const charVal = await charChar.readValue();
-                const charStr = new TextDecoder().decode(charVal);
-                if(charStr) charInput.value = charStr; else charInput.placeholder = "Empty";
-            } catch(e) {
-                svcInput.placeholder = "Error";
-                charInput.placeholder = "Error";
-            }
-        }
-
-        window.saveSlotUUID = async function(index, type) {
-            const inputId = type === 0 ? `svc-uuid-${index}` : `char-uuid-${index}`;
-            const val = document.getElementById(inputId).value.trim();
-            if(!val) return alert("Inserisci un UUID valido");
-            try {
-                const uuid = getConfigSlotUUID(index, type);
-                const char = await activeService.getCharacteristic(uuid);
-                addLog(`Slot ${index} Write...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog(`Slot ${index} Saved.`, 'success');
-            } catch(e) { addLog(`Err Save Slot ${index}: ${e.message}`, 'error'); }
-        };
-
-        async function saveHubName() {
-            const val = document.getElementById('hubNameInput').value.trim();
-            if(!val) return alert("Inserisci un nome valido");
-            try {
-                const char = await activeService.getCharacteristic(CHAR_NAME_UUID);
-                addLog(`Saving Name: ${val}...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog("Name Saved!", 'success');
-            } catch(e) { addLog("Err Save Name: " + e.message, 'error'); }
-        }
-
-        async function saveSensorCount() {
-            const val = document.getElementById('sensorCountInput').value;
-            if(!val) return;
-            const count = parseInt(val);
-            if (count < 1 || count > 10) return alert("Errore: 1-10 sensori massimo.");
-            try {
-                const char = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-                addLog(`Saving count: ${val}...`, 'tx');
-                await char.writeValue(new TextEncoder().encode(val));
-                addLog("Saved. Rebooting...", 'success');
-                setTimeout(() => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); }, 1500);
-            } catch(e) { addLog("Err Save Count: " + e.message, 'error'); }
-        }
-
-        async function performReset() {
-            if(!confirm("Reset ALL config?")) return;
-            try {
-                const char = await activeService.getCharacteristic(CHAR_RESET_UUID);
-                await char.writeValue(new TextEncoder().encode("1"));
-                addLog("Reset requested...", 'tx');
-            } catch(e) { addLog("Err Reset: " + e.message, 'error'); }
-        }
-
-        function updateStatus(state, mode = '') {
-            const statusText = document.getElementById('statusText');
-            const statusIcon = document.getElementById('statusIcon');
-            const statusRing = document.getElementById('statusRing');
-            const modeText = document.getElementById('modeText');
-
-            if (state === 'connecting') {
-                statusText.textContent = "Connessione...";
-                statusRing.classList.remove('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-blue-500";
-                connectBtn.disabled = true;
-                connectBtn.textContent = "Ricerca in corso...";
-            } else if (state === 'connected') {
-                statusText.textContent = "Connesso";
-                statusText.className = "text-xs font-bold uppercase tracking-tight text-emerald-400";
-                statusRing.classList.add('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
-                modeText.textContent = mode === 'CONFIG' ? "MODALITÀ CONFIGURAZIONE" : "MODALITÀ OPERATIVA";
-                modeText.className = mode === 'CONFIG' ? "text-[10px] text-yellow-400 font-bold font-mono" : "text-[10px] text-blue-300 font-bold font-mono";
-                connectBtn.classList.add('hidden');
-                disconnectBtn.classList.remove('hidden');
-            } else {
-                statusText.textContent = "Disconnesso";
-                statusText.className = "text-xs font-bold uppercase tracking-tight text-slate-400";
-                statusRing.classList.add('hidden');
-                statusIcon.className = "relative inline-flex w-3 h-3 rounded-full bg-red-500";
-                modeText.textContent = "--";
-                connectBtn.disabled = false;
-                connectBtn.textContent = "📡 Connetti Dispositivo";
-                connectBtn.classList.remove('hidden');
-                disconnectBtn.classList.add('hidden');
-                configPanel.classList.add('hidden');
-                hubPanel.classList.add('hidden');
-                sensorGrid.innerHTML = '';
-                configSlotsContainer.innerHTML = '';
-            }
-        }
-        function onDisconnected() { updateStatus('disconnected'); addLog('Connessione persa.', 'warn'); }
-
-        connectBtn.addEventListener('click', connect);
-        disconnectBtn.addEventListener('click', () => { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
-        document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
-        document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
-        document.getElementById('resetBtn').addEventListener('click', performReset);
-        document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '<div class="text-slate-600 italic">> Log pulito.</div>');
-    </script>
+connectBtn.addEventListener('click', connect);
+disconnectBtn.addEventListener('click', ()=>{ if(bleDevice&&bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
+document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
+document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
+document.getElementById('resetBtn').addEventListener('click', performReset);
+document.getElementById('clearLog').addEventListener('click', ()=>logEl.innerHTML='<div class="text-slate-600 italic">> Log pulito.</div>');
+</script>
 </body>
 </html>
