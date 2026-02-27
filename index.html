@@ -105,30 +105,39 @@
             display: flex; flex-direction: column;
         }
         .log-hdr {
-            display: flex; align-items: center; gap: 0.4rem;
+            display: flex; align-items: center;
             background: #0a1628; border: 1px solid #1e293b;
-            border-radius: 4px; padding: 0.35rem 0.6rem;
-            cursor: pointer; user-select: none;
+            border-radius: 4px;
+            overflow: hidden;
             transition: border-radius 0.25s;
         }
         .log-hdr.open { border-radius: 4px 4px 0 0; }
-        .log-hdr:hover { background: #0f2040; }
+        .log-toggle-zone {
+            display: flex; align-items: center; gap: 0.5rem;
+            flex: 1; min-width: 0;
+            padding: 0.4rem 0.6rem;
+            cursor: pointer; user-select: none;
+        }
+        .log-toggle-zone:hover { background: #0f2040; }
+        .log-clear-btn {
+            font-size: 0.65rem; background: none; border: none;
+            border-left: 1px solid #1e293b;
+            color: var(--accent); cursor: pointer;
+            padding: 0 0.8rem; min-height: 2rem;
+            flex-shrink: 0;
+        }
+        .log-clear-btn:hover { background: #0f2040; color: #60a5fa; }
         .log-lbl { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
-        .log-toggle-icon { margin-left: auto; font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
-        .log-toggle-icon.open { transform: rotate(180deg); }
         .log-preview {
             font-family: monospace; font-size: 0.68rem;
-            flex: 1; min-width: 0; padding: 0 0.5rem;
+            flex: 1; min-width: 0;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             color: var(--muted);
         }
-        .log-body {
-            overflow: hidden;
-            transition: height 0.25s ease;
-            height: 0;
-        }
+        .log-toggle-icon { font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+        .log-toggle-icon.open { transform: rotate(180deg); }
+        .log-body { overflow: hidden; transition: height 0.25s ease; height: 0; }
         .log-body.open { height: 180px; }
-
         .log-rx  { color: #22d3ee; }
         .log-ok  { color: #4ade80; }
         .log-err { color: #f87171; }
@@ -194,12 +203,13 @@
 
         <!-- Log desktop -->
         <div id="log-wrap" class="hidden-mobile" style="margin-top:1rem;">
-            <div id="log-hdr-desk" class="log-hdr" onclick="toggleLog('desk')">
-                <span class="log-lbl">LOG</span>
-                <span id="log-preview" class="log-preview">> Ready.</span>
-                <button onclick="event.stopPropagation(); clearLogFn('log','log-preview')"
-                    style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;flex-shrink:0;">Pulisci</button>
-                <span id="log-icon-desk" class="log-toggle-icon">▼</span>
+            <div id="log-hdr-desk" class="log-hdr">
+                <div class="log-toggle-zone" onclick="toggleLog('desk')">
+                    <span class="log-lbl">LOG</span>
+                    <span id="log-preview" class="log-preview">> Ready.</span>
+                    <span id="log-icon-desk" class="log-toggle-icon">▼</span>
+                </div>
+                <button class="log-clear-btn" onclick="clearLogFn('log','log-preview')">Pulisci</button>
             </div>
             <div id="log-body-desk" class="log-body">
                 <div id="log"></div>
@@ -237,12 +247,13 @@
 
         <!-- Log mobile -->
         <div id="log-wrap-mobile" style="margin-top:1rem;">
-            <div id="log-hdr-mob" class="log-hdr" onclick="toggleLog('mob')">
-                <span class="log-lbl">LOG</span>
-                <span id="logMobile-preview" class="log-preview">> Ready.</span>
-                <button onclick="event.stopPropagation(); clearLogFn('logMobile','logMobile-preview')"
-                    style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;flex-shrink:0;">Pulisci</button>
-                <span id="log-icon-mob" class="log-toggle-icon">▼</span>
+            <div id="log-hdr-mob" class="log-hdr">
+                <div class="log-toggle-zone" onclick="toggleLog('mob')">
+                    <span class="log-lbl">LOG</span>
+                    <span id="logMobile-preview" class="log-preview">> Ready.</span>
+                    <span id="log-icon-mob" class="log-toggle-icon">▼</span>
+                </div>
+                <button class="log-clear-btn" onclick="clearLogFn('logMobile','logMobile-preview')">Pulisci</button>
             </div>
             <div id="log-body-mob" class="log-body">
                 <div id="logMobile"></div>
@@ -326,7 +337,7 @@ function addLog(msg, type='info') {
         el.className = 'log-preview' + (cls ? ' ' + cls : '');
     });
 
-    // Inserisce in cima al log espanso (più recente in alto)
+    // Inserisce in cima (più recente in alto)
     [logEl, logMobile].forEach(el => {
         if (!el) return;
         const d = document.createElement('div');
