@@ -724,44 +724,46 @@ async function saveSensorCount() {
     if (n < 1 || n > 10) return alert('Valore 1–10 sensori.');
     try {
         const c = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-        await c.writeValue(new TextEncoder().encode(val));
-        addLog('Salvato. Il dispositivo si riavvia...', 'success');
-        // Attende riavvio, poi scollega e riapre la ricerca
-        setTimeout(async () => {
-            if (bleDevice && bleDevice.gatt.connected) {
-                bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
-                bleDevice.gatt.disconnect();
-            }
-            updateStatus('disconnected');
-            bleDevice = null; gattServer = null; activeService = null;
-            addLog('Riconnessione dopo riavvio...', 'info');
-            await new Promise(r => setTimeout(r, 500));
-            if (checkBleSupport()) connect();
-        }, 1500);
+
+        // Scrivi SENZA await — non aspettiamo la conferma
+        c.writeValue(new TextEncoder().encode(val)).catch(() => {});
+
+        addLog('Salvataggio inviato. Disconnessione...', 'success');
+
+        // Disconnetti e riapri subito
+        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+        bleDevice.gatt.disconnect();
+        updateStatus('disconnected');
+        bleDevice = null; gattServer = null; activeService = null;
+
+        await new Promise(r => setTimeout(r, 300));
+        if (checkBleSupport()) connect();
+
     } catch(e) { addLog('Err count: ' + e.message, 'error'); }
 }
 
-// Punto 2: dopo factory reset, scollega e riapre la ricerca
 async function performReset() {
     if (!confirm('Reset TUTTA la configurazione?')) return;
     try {
         const c = await activeService.getCharacteristic(CHAR_RESET_UUID);
-        await c.writeValue(new TextEncoder().encode("1"));
-        addLog('Reset richiesto...', 'tx');
-        setTimeout(async () => {
-            if (bleDevice && bleDevice.gatt.connected) {
-                bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
-                bleDevice.gatt.disconnect();
-            }
-            updateStatus('disconnected');
-            bleDevice = null; gattServer = null; activeService = null;
-            document.getElementById('resetFeedback').textContent = '';
-            addLog('Riconnessione dopo reset...', 'info');
-            await new Promise(r => setTimeout(r, 800));
-            if (checkBleSupport()) connect();
-        }, 2000);
+
+        // Scrivi SENZA await
+        c.writeValue(new TextEncoder().encode("1")).catch(() => {});
+
+        addLog('Reset inviato. Disconnessione...', 'tx');
+
+        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+        bleDevice.gatt.disconnect();
+        updateStatus('disconnected');
+        bleDevice = null; gattServer = null; activeService = null;
+        document.getElementById('resetFeedback').textContent = '';
+
+        await new Promise(r => setTimeout(r, 300));
+        if (checkBleSupport()) connect();
+
     } catch(e) { addLog('Err reset: ' + e.message, 'error'); }
 }
+
 
 // ================================================================
 //  EVENTI
