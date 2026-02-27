@@ -6,121 +6,251 @@
     <title>Smart Hub Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .log-container { font-family: 'Courier New', Courier, monospace; font-size: 0.75rem; }
-        @keyframes pulse-ring { 0% { transform: scale(.33); opacity: 1; } 80%, 100% { opacity: 0; } }
-        .connecting-ring { animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
-        .sensor-card { transition: all 0.3s ease; }
-        .relay-btn  { transition: all 0.2s ease; }
-        /* Griglia campi sensore */
-        .field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
-        .field-pill { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem;
-                      padding: 0.35rem 0.5rem; display:flex; flex-direction:column; }
-        .field-key  { font-size: 0.6rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.05em; }
-        .field-val  { font-size: 0.9rem; font-family: 'Courier New', monospace; color: #f1f5f9; font-weight: 700; }
+        :root {
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --border: #334155;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warn: #ca8a04;
+        }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; min-height: 100vh; }
+
+        /* ---- LAYOUT ---- */
+        #app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+        /* Mobile: tutto in colonna */
+        #sidebar  { padding: 1rem; border-bottom: 1px solid var(--border); }
+        #main-area { flex: 1; padding: 1rem; overflow-y: auto; }
+
+        /* Desktop: sidebar sinistra + main destra */
+        @media (min-width: 900px) {
+            #app-shell { flex-direction: row; }
+            #sidebar   { width: 320px; min-width: 280px; max-width: 340px; border-bottom: none; border-right: 2px solid var(--border); padding: 1.5rem; overflow-y: auto; height: 100vh; position: sticky; top: 0; }
+            #main-area { padding: 1.5rem 2rem; }
+        }
+
+        /* ---- PANEL BASE ---- */
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+        .panel-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
+
+        /* ---- STATUS BAR ---- */
+        #status-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: #0a1628; border: 1px solid var(--border); border-radius: 4px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+        .status-dot.connected    { background: var(--success); box-shadow: 0 0 6px var(--success); }
+        .status-dot.connecting   { background: var(--warn); animation: blink 0.8s step-end infinite; }
+        @keyframes blink { 50%{ opacity:0; } }
+        #status-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+        #mode-label   { font-size: 0.65rem; color: var(--muted); font-family: monospace; margin-left: auto; }
+
+        /* ---- BUTTONS ---- */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+               padding: 0.6rem 1.2rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem;
+               border: none; cursor: pointer; transition: background 0.15s, transform 0.1s; width: 100%; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary   { background: var(--accent); color: #fff; }
+        .btn-primary:hover  { background: var(--accent-hover); }
+        .btn-secondary { background: #334155; color: var(--text); }
+        .btn-secondary:hover { background: #475569; }
+        .btn-danger    { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-sm        { padding: 0.4rem 0.8rem; font-size: 0.72rem; width: auto; }
+        .btn:disabled  { opacity: 0.4; cursor: not-allowed; }
+
+        /* ---- FORM ELEMENTS ---- */
+        .form-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .form-row label { font-size: 0.78rem; color: var(--text); }
+        .input-text { background: #0a1628; border: 1px solid var(--border); border-radius: 4px;
+                      padding: 0.45rem 0.6rem; color: var(--text); font-family: monospace; font-size: 0.82rem;
+                      outline: none; transition: border-color 0.15s; }
+        .input-text:focus { border-color: var(--accent); }
+        .input-num  { width: 4rem; text-align: center; }
+        .hint       { font-size: 0.62rem; color: var(--muted); font-style: italic; margin-top: 0.25rem; }
+
+        /* ---- SENSOR CARDS ---- */
+        #sensorGrid { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
+        @media (min-width: 900px) { #sensorGrid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); } }
+
+        .sensor-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; }
+        .sensor-card.online   { border-color: var(--success); }
+        .sensor-card.offline  { border-color: #7f1d1d; opacity: 0.75; }
+        .sensor-card.uncfg    { border: 1px dashed var(--border); opacity: 0.5; }
+
+        .sensor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .sensor-title  { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+        .status-badge  { font-size: 0.58rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; background: #334155; color: var(--muted); }
+        .status-badge.online  { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+        .status-badge.offline { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+        .field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.4rem; margin-top: 0.4rem; }
+        .field-pill { background: #0a1628; border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem 0.4rem; }
+        .field-key  { font-size: 0.55rem; text-transform: uppercase; color: var(--muted); font-weight: 700; letter-spacing: 0.05em; }
+        .field-val  { font-size: 0.88rem; font-family: monospace; color: var(--text); font-weight: 700; }
+        .field-unit { font-size: 0.62rem; color: var(--muted); margin-left: 2px; font-weight: 400; }
+
+        /* ---- RELAY GRID ---- */
+        #relayGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        @media (min-width: 900px) { #relayGrid { grid-template-columns: repeat(6, 1fr); } }
+
+        .relay-btn { background: #1e293b; border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.3rem; cursor: pointer; text-align: center; transition: all 0.15s; }
+        .relay-btn:hover  { border-color: #64748b; }
+        .relay-btn:active { transform: scale(0.95); }
+        .relay-btn.on     { background: #14532d; border-color: #16a34a; }
+        .relay-led  { width: 8px; height: 8px; border-radius: 50%; background: #334155; margin: 0 auto 4px; }
+        .relay-led.on { background: #4ade80; box-shadow: 0 0 6px #16a34a; }
+        .relay-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+
+        /* ---- CONFIG SLOTS ---- */
+        .config-slot { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; position: relative; }
+        .slot-badge  { position: absolute; top: 0.4rem; right: 0.6rem; font-size: 0.58rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+        /* ---- LOG ---- */
+        #log-wrap   { margin-top: auto; padding-top: 0.75rem; }
+        #log        { font-family: monospace; font-size: 0.68rem; background: #020617; border: 1px solid #1e293b; border-radius: 4px; padding: 0.5rem; height: 120px; overflow-y: auto; color: var(--muted); line-height: 1.5; }
+        .log-rx     { color: #22d3ee; }
+        .log-tx     { color: #a78bfa; }
+        .log-ok     { color: #4ade80; }
+        .log-err    { color: #f87171; }
+        .log-hdr    { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+        .log-lbl    { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+
+        /* ---- ALERT BANNER ---- */
+        #ble-alert { display: none; background: #78350f; border: 1px solid #92400e; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.75rem; color: #fcd34d; }
+        #ble-alert a { color: #fde68a; text-decoration: underline; }
+
+        /* ---- HEADER ---- */
+        #app-header { padding: 0 0 0.75rem 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+        #app-title  { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text); }
+        #app-sub    { font-size: 0.62rem; color: var(--muted); font-family: monospace; margin-top: 2px; }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 max-w-md mx-auto">
+<body>
 
-<header class="text-center mb-6 pt-2">
-    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-        Smart Hub Controller
-    </h1>
-    <p class="text-xs text-slate-500 mt-1">Universal Beacon Manager</p>
-</header>
+<div id="app-shell">
 
-<!-- Connessione -->
-<div class="bg-slate-800 rounded-2xl p-5 shadow-xl mb-4 border border-slate-700">
-    <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-2">
-            <div class="relative flex items-center justify-center w-3 h-3">
-                <span id="statusRing" class="hidden absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 connecting-ring"></span>
-                <span id="statusIcon" class="relative inline-flex w-3 h-3 rounded-full bg-red-500"></span>
-            </div>
-            <div class="flex flex-col">
-                <span id="statusText" class="text-xs font-bold uppercase tracking-tight text-slate-400">Disconnesso</span>
-                <span id="modeText" class="text-[10px] text-slate-500 font-mono">--</span>
-            </div>
+    <!-- SIDEBAR / HEADER MOBILE -->
+    <div id="sidebar">
+        <div id="app-header">
+            <div id="app-title">⬡ Smart Hub Controller</div>
+            <div id="app-sub">Universal Beacon Manager</div>
         </div>
-    </div>
-    <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20">
-        📡 Connetti Dispositivo
-    </button>
-    <button id="disconnectBtn" class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold transition-all">
-        ❌ Scollega
-    </button>
-</div>
 
-<!-- CONFIG PANEL -->
-<main id="configPanel" class="hidden space-y-4">
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
-        <h2 class="text-xs font-bold text-blue-400 mb-4 uppercase tracking-widest border-b border-slate-700 pb-2">Impostazioni Sistema</h2>
-        <div class="flex items-center justify-between gap-4 mb-4">
-            <label class="text-sm text-slate-300">Nome Hub:</label>
-            <div class="flex items-center gap-2">
-                <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="w-32 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-sm font-mono focus:border-blue-500 outline-none">
-                <button id="saveNameBtn" class="bg-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-500 active:scale-95">OK</button>
-            </div>
-        </div>
-        <div class="flex items-center justify-between gap-4">
-            <label class="text-sm text-slate-300">Numero Sensori:</label>
-            <div class="flex items-center gap-2">
-                <input id="sensorCountInput" type="number" min="1" max="10" class="w-16 bg-slate-900 border border-slate-600 rounded-lg px-2 py-2 text-center font-mono text-lg focus:border-blue-500 outline-none">
-                <button id="saveCountBtn" class="bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500 active:scale-95">SALVA</button>
-            </div>
-        </div>
-        <p class="text-[10px] text-slate-500 mt-2 italic">* Cambiare il numero sensori riavvia il dispositivo.</p>
-    </div>
-    <div id="configSlotsContainer" class="space-y-4"></div>
-    <div class="bg-slate-800 rounded-2xl p-5 shadow-xl border border-red-900/30 mt-6">
-        <h2 class="text-xs font-bold text-red-400 mb-3 uppercase tracking-widest">Zona Pericolosa</h2>
-        <button id="resetBtn" class="w-full bg-red-900/20 border border-red-600/50 hover:bg-red-600 hover:text-white text-red-400 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-            ⚠️ Factory Reset
-        </button>
-        <p id="resetFeedback" class="text-[10px] text-center mt-2 text-slate-500 h-4"></p>
-    </div>
-</main>
+        <!-- Alert iOS/browser non compatibile -->
+        <div id="ble-alert"></div>
 
-<!-- HUB PANEL -->
-<main id="hubPanel" class="hidden">
-    <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-700/50">
-        <div class="flex justify-between items-start">
-            <div>
-                <h2 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Live Data Stream</h2>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-slate-500">Device:</span>
-                    <span id="liveHubName" class="text-lg font-mono text-white font-bold">--</span>
+        <!-- Status bar -->
+        <div id="status-bar">
+            <div id="statusDot" class="status-dot"></div>
+            <span id="statusText" class="status-label" style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Disconnesso</span>
+            <span id="modeText" class="mode-label" style="font-size:0.65rem;color:var(--muted);font-family:monospace;margin-left:auto;">--</span>
+        </div>
+
+        <!-- Pulsanti connessione -->
+        <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">📡 Connetti Dispositivo</button>
+        <button id="disconnectBtn" class="btn btn-secondary hidden">✕ Scollega</button>
+
+        <!-- CONFIG: impostazioni sistema -->
+        <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
+            <div class="panel-title">Impostazioni Sistema</div>
+            <div class="form-row">
+                <label>Nome Hub</label>
+                <div style="display:flex;gap:0.4rem;">
+                    <input id="hubNameInput" type="text" maxlength="20" placeholder="Caricamento..." class="input-text" style="width:9rem;">
+                    <button id="saveNameBtn" class="btn btn-primary btn-sm">OK</button>
                 </div>
             </div>
-            <span id="hubSensorCountBadge" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 border border-slate-700">0 Sensori</span>
+            <div class="form-row">
+                <label>N° Sensori</label>
+                <div style="display:flex;gap:0.4rem;align-items:center;">
+                    <input id="sensorCountInput" type="number" min="1" max="10" class="input-text input-num">
+                    <button id="saveCountBtn" class="btn btn-primary btn-sm">SALVA</button>
+                </div>
+            </div>
+            <p class="hint">* Cambiare il numero sensori riavvia il dispositivo.</p>
+        </div>
+
+        <!-- CONFIG: zona pericolosa -->
+        <div id="dangerPanel" class="panel hidden" style="border-color:#7f1d1d;">
+            <div class="panel-title" style="color:#f87171;">Zona Pericolosa</div>
+            <button id="resetBtn" class="btn btn-danger">⚠ Factory Reset</button>
+            <p id="resetFeedback" class="hint" style="text-align:center;min-height:1rem;margin-top:0.4rem;"></p>
+        </div>
+
+        <!-- Log (desktop: nella sidebar; mobile: in fondo) -->
+        <div id="log-wrap" class="hidden-mobile" style="margin-top:1rem;">
+            <div class="log-hdr">
+                <span class="log-lbl">Console Log</span>
+                <button id="clearLog" style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;">Pulisci</button>
+            </div>
+            <div id="log"><span style="color:#334155;font-style:italic;">> Ready.</span></div>
         </div>
     </div>
 
-    <!-- Relè -->
-    <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700 mb-4">
-        <h3 class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span>⚡ Controllo Relè</span>
-            <span class="w-full h-[1px] bg-slate-700"></span>
-        </h3>
-        <div id="relayGrid" class="grid grid-cols-3 gap-3"></div>
-    </div>
+    <!-- MAIN AREA -->
+    <div id="main-area">
 
-    <!-- Sensori -->
-    <div id="sensorGrid" class="grid grid-cols-1 gap-3"></div>
-</main>
+        <!-- CONFIG SLOTS -->
+        <div id="configSlotsWrapper" class="hidden">
+            <div id="configSlotsContainer"></div>
+        </div>
 
-<!-- Log -->
-<div class="mt-auto pt-6">
-    <div class="flex justify-between items-center mb-1">
-        <span class="text-[10px] font-bold text-slate-600 uppercase">Console Log</span>
-        <button id="clearLog" class="text-[10px] text-blue-500 hover:text-blue-400">Pulisci</button>
-    </div>
-    <div id="log" class="log-container bg-black/40 rounded-xl p-3 h-32 overflow-y-auto text-slate-400 border border-slate-800 leading-snug">
-        <div class="text-slate-600 italic">> Ready.</div>
+        <!-- HUB PANEL -->
+        <div id="hubPanel" class="hidden">
+
+            <!-- Hub info bar -->
+            <div class="panel" style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 1rem;">
+                <div>
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">Live Data Stream</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:2px;">
+                        <span style="font-size:0.7rem;color:var(--muted);">Device:</span>
+                        <span id="liveHubName" style="font-size:1rem;font-family:monospace;font-weight:700;">--</span>
+                    </div>
+                </div>
+                <span id="hubSensorCountBadge" style="font-size:0.62rem;background:#0a1628;padding:0.25rem 0.5rem;border-radius:3px;border:1px solid var(--border);color:var(--muted);">0 Sensori</span>
+            </div>
+
+            <!-- Relay -->
+            <div class="panel">
+                <div class="panel-title">⚡ Controllo Relè</div>
+                <div id="relayGrid"></div>
+            </div>
+
+            <!-- Sensor cards -->
+            <div id="sensorGrid"></div>
+        </div>
+
+        <!-- Log (solo mobile) -->
+        <div id="log-wrap-mobile" style="margin-top:1rem;">
+            <div class="log-hdr">
+                <span class="log-lbl">Console Log</span>
+                <button id="clearLogMobile" style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;">Pulisci</button>
+            </div>
+            <div id="logMobile"><span style="color:#334155;font-style:italic;">> Ready.</span></div>
+        </div>
+
     </div>
 </div>
 
+<style>
+    /* Log mobile: nascosto su desktop, visibile su mobile */
+    @media (min-width: 900px) {
+        #log-wrap-mobile { display: none; }
+        .hidden-mobile { display: block !important; }
+    }
+    @media (max-width: 899px) {
+        #log-wrap { display: none !important; }
+    }
+</style>
+
 <script>
-// --- UUID ---
+// ================================================================
+//  UUID
+// ================================================================
 const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
 const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
 const RELAY_SVC_UUID  = 'aaaa0001-0000-1000-8000-00805f9b34fb';
@@ -137,45 +267,284 @@ let bleDevice=null, gattServer=null, activeService=null;
 let relayStates=[false,false,false,false,false,false];
 let relayCharacteristics=[];
 
-const connectBtn        = document.getElementById('connectBtn');
-const disconnectBtn     = document.getElementById('disconnectBtn');
-const logEl             = document.getElementById('log');
-const configPanel       = document.getElementById('configPanel');
-const hubPanel          = document.getElementById('hubPanel');
-const sensorGrid        = document.getElementById('sensorGrid');
-const relayGrid         = document.getElementById('relayGrid');
+// ================================================================
+//  REFS DOM
+// ================================================================
+const connectBtn           = document.getElementById('connectBtn');
+const disconnectBtn        = document.getElementById('disconnectBtn');
+const logEl                = document.getElementById('log');
+const logMobile            = document.getElementById('logMobile');
+const sysPanel             = document.getElementById('sysPanel');
+const dangerPanel          = document.getElementById('dangerPanel');
+const configSlotsWrapper   = document.getElementById('configSlotsWrapper');
+const hubPanel             = document.getElementById('hubPanel');
+const sensorGrid           = document.getElementById('sensorGrid');
+const relayGrid            = document.getElementById('relayGrid');
 const configSlotsContainer = document.getElementById('configSlotsContainer');
 
 // ================================================================
-//  PARSING PAYLOAD
-//  Converte "temp=22.45;hum=58;rssi=-72" in oggetto strutturato
-//  con label, unità e icona per ogni campo noto.
+//  BLE COMPATIBILITY CHECK
+// ================================================================
+function checkBleSupport() {
+    const alertEl = document.getElementById('ble-alert');
+    const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+        alertEl.style.display = 'block';
+        alertEl.innerHTML = `⚠ <strong>iOS non supporta Web Bluetooth.</strong><br>
+            Usa un dispositivo Android con Chrome/Edge/Brave, oppure un PC (Windows/macOS/Linux) con Chrome.<br>
+            <a href="https://apps.apple.com/app/bluefy/id1492822055" target="_blank">→ Alternativa: app Bluefy su iOS</a>`;
+        connectBtn.disabled = true;
+        return false;
+    }
+    if (!navigator.bluetooth) {
+        alertEl.style.display = 'block';
+        alertEl.innerHTML = `⚠ <strong>Questo browser non supporta Web Bluetooth.</strong><br>
+            Apri questa pagina con <strong>Chrome</strong> o <strong>Edge</strong> su Android o PC.<br>
+            Firefox e Safari non sono supportati.`;
+        connectBtn.disabled = true;
+        return false;
+    }
+    return true;
+}
+
+// ================================================================
+//  LOG — scrive su entrambi i log (sidebar desktop + mobile)
+// ================================================================
+function addLog(msg, type='info') {
+    const cls = type==='error'?'log-err':type==='success'?'log-ok':type==='rx'?'log-rx':type==='tx'?'log-tx':'';
+    const prefix = type==='rx'?'RX < ':type==='tx'?'TX > ':'> ';
+    [logEl, logMobile].forEach(el => {
+        if (!el) return;
+        const d = document.createElement('div');
+        if (cls) d.className = cls;
+        d.textContent = prefix + msg;
+        el.appendChild(d);
+        el.scrollTop = el.scrollHeight;
+    });
+}
+
+// ================================================================
+//  STATUS
+// ================================================================
+function updateStatus(state, mode='') {
+    const dot  = document.getElementById('statusDot');
+    const st   = document.getElementById('statusText');
+    const mt   = document.getElementById('modeText');
+
+    dot.className = 'status-dot';
+    if (state === 'connecting') {
+        dot.classList.add('connecting');
+        st.textContent = 'Connessione...';
+        st.style.color = '#fbbf24';
+        connectBtn.disabled = true;
+        connectBtn.textContent = 'Ricerca...';
+    } else if (state === 'connected') {
+        dot.classList.add('connected');
+        st.textContent = 'Connesso';
+        st.style.color = '#4ade80';
+        mt.textContent = mode === 'CONFIG' ? 'MODALITÀ CONFIGURAZIONE' : 'MODALITÀ OPERATIVA';
+        mt.style.color = mode === 'CONFIG' ? '#fbbf24' : '#93c5fd';
+        connectBtn.classList.add('hidden');
+        disconnectBtn.classList.remove('hidden');
+    } else {
+        st.textContent = 'Disconnesso';
+        st.style.color = '';
+        mt.textContent = '--';
+        mt.style.color = '';
+        connectBtn.disabled = false;
+        connectBtn.textContent = '📡 Connetti Dispositivo';
+        connectBtn.classList.remove('hidden');
+        disconnectBtn.classList.add('hidden');
+        // Nascondi tutti i pannelli
+        sysPanel.classList.add('hidden');
+        dangerPanel.classList.add('hidden');
+        configSlotsWrapper.classList.add('hidden');
+        hubPanel.classList.add('hidden');
+        sensorGrid.innerHTML = '';
+        configSlotsContainer.innerHTML = '';
+        relayGrid.innerHTML = '';
+        relayCharacteristics = [];
+    }
+}
+
+// ================================================================
+//  DISCONNECT / LOST CONNECTION
+//  Punto 1: quando si perde la connessione, torna alla schermata
+//  di ricerca dispositivo (apre automaticamente il dialog BLE).
+// ================================================================
+function onDisconnected() {
+    addLog('Connessione persa. Nuova ricerca...', 'error');
+    updateStatus('disconnected');
+    bleDevice = null;
+    gattServer = null;
+    activeService = null;
+    // Riapre automaticamente la finestra di ricerca BLE dopo 800ms
+    setTimeout(() => {
+        if (checkBleSupport()) connect();
+    }, 800);
+}
+
+// ================================================================
+//  CONNECT
+// ================================================================
+async function connect() {
+    if (!checkBleSupport()) return;
+    try {
+        updateStatus('connecting');
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [CONFIG_SVC_UUID] }, { services: [HUB_SVC_UUID] }],
+            optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
+        });
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        gattServer = await bleDevice.gatt.connect();
+        const services = await gattServer.getPrimaryServices();
+        let mode = 'UNKNOWN';
+        for (const s of services) {
+            if (s.uuid === CONFIG_SVC_UUID) { mode = 'CONFIG'; activeService = s; }
+            else if (s.uuid === HUB_SVC_UUID) { mode = 'HUB'; activeService = s; }
+        }
+        if (mode === 'CONFIG') await setupConfigMode();
+        else if (mode === 'HUB') await setupHubMode();
+        else throw new Error('Nessun servizio compatibile trovato.');
+        updateStatus('connected', mode);
+        addLog(`Connesso: ${mode}`, 'success');
+    } catch (error) {
+        addLog(`Errore: ${error.message}`, 'error');
+        updateStatus('disconnected');
+    }
+}
+
+// ================================================================
+//  CONFIG MODE
+// ================================================================
+async function setupConfigMode() {
+    sysPanel.classList.remove('hidden');
+    dangerPanel.classList.remove('hidden');
+    configSlotsWrapper.classList.remove('hidden');
+    hubPanel.classList.add('hidden');
+    configSlotsContainer.innerHTML = '';
+    try {
+        const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
+        const count = parseInt(new TextDecoder().decode(await countChar.readValue()));
+        document.getElementById('sensorCountInput').value = count;
+        addLog(`Config: ${count} sensori.`, 'rx');
+        try {
+            const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+            document.getElementById('hubNameInput').value = new TextDecoder().decode(await nameChar.readValue());
+        } catch(e) {}
+        for (let i = 1; i <= count; i++) {
+            createConfigSlot(i);
+            await readConfigSlotValues(i);
+            await new Promise(r => setTimeout(r, 50));
+        }
+        // Notifiche reset
+        try {
+            const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
+            if (resetChar.properties.notify) {
+                await resetChar.startNotifications();
+                resetChar.addEventListener('characteristicvaluechanged', (e) => {
+                    if (new TextDecoder().decode(e.target.value) === "0") {
+                        document.getElementById('resetFeedback').textContent = 'Reset completato!';
+                        document.getElementById('resetFeedback').style.color = '#4ade80';
+                        addLog('Factory Reset confermato.', 'success');
+                    }
+                });
+            }
+        } catch(e) {}
+    } catch(e) { addLog('Errore config: ' + e.message, 'error'); }
+}
+
+// ================================================================
+//  HUB MODE
+// ================================================================
+async function setupHubMode() {
+    sysPanel.classList.add('hidden');
+    dangerPanel.classList.add('hidden');
+    configSlotsWrapper.classList.add('hidden');
+    hubPanel.classList.remove('hidden');
+    sensorGrid.innerHTML = '';
+    relayGrid.innerHTML = '';
+    relayCharacteristics = [];
+    document.getElementById('liveHubName').textContent = '--';
+
+    // Relè
+    try {
+        const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
+        addLog('Servizio Relè trovato.', 'success');
+        for (let i = 0; i < 6; i++) {
+            try {
+                const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
+                relayCharacteristics[i] = char;
+                createRelayButton(i);
+                try {
+                    await char.startNotifications();
+                    char.addEventListener('characteristicvaluechanged', (event) => {
+                        updateRelayUI(i, new TextDecoder().decode(event.target.value) === "1");
+                    });
+                } catch(e) {}
+                try { updateRelayUI(i, new TextDecoder().decode(await char.readValue()) === "1"); } catch(e) {}
+            } catch(e) {}
+        }
+    } catch(e) { addLog('Nessun servizio Relè.', 'error'); }
+
+    // Sensori
+    try {
+        try {
+            const nc = await activeService.getCharacteristic(CHAR_NAME_UUID);
+            document.getElementById('liveHubName').textContent = new TextDecoder().decode(await nc.readValue());
+        } catch(e) { document.getElementById('liveHubName').textContent = 'Hub Device'; }
+
+        const characteristics = await activeService.getCharacteristics();
+        let sensorCount = 0;
+        characteristics.forEach(c => { if (c.uuid !== CHAR_NAME_UUID) sensorCount++; });
+        document.getElementById('hubSensorCountBadge').textContent = `${sensorCount} Sensori`;
+
+        let sIdx = 0;
+        for (let i = 0; i < characteristics.length; i++) {
+            const char = characteristics[i];
+            if (char.uuid === CHAR_NAME_UUID) continue;
+            sIdx++;
+            const cid = sIdx;
+            createSensorCard(cid);
+            try {
+                await char.startNotifications();
+                char.addEventListener('characteristicvaluechanged', (e) => {
+                    const val = new TextDecoder().decode(e.target.value);
+                    updateSensorCard(cid, val);
+                    addLog(`S${cid}: ${val}`, 'rx');
+                });
+                updateSensorCard(cid, new TextDecoder().decode(await char.readValue()));
+                await new Promise(r => setTimeout(r, 50));
+            } catch(e) {}
+        }
+    } catch(e) { addLog('Err Hub: ' + e.message, 'error'); }
+}
+
+// ================================================================
+//  PAYLOAD PARSING
 // ================================================================
 const FIELD_META = {
-    temp:   { label:'Temperatura', unit:'°C',  icon:'🌡️', color:'text-orange-300' },
-    hum:    { label:'Umidità',     unit:'%',   icon:'💧', color:'text-blue-300'   },
-    pir:    { label:'Presenza',    unit:'',    icon:'👁️', color:'text-yellow-300' },
-    mov:    { label:'Movimento',   unit:'',    icon:'🏃', color:'text-yellow-300' },
-    mag:    { label:'Magnete',     unit:'',    icon:'🔵', color:'text-blue-400'   },
-    di:     { label:'Ingresso',    unit:'',    icon:'🔌', color:'text-green-300'  },
-    ax:     { label:'Acc X',       unit:'mg',  icon:'📐', color:'text-purple-300' },
-    ay:     { label:'Acc Y',       unit:'mg',  icon:'📐', color:'text-purple-300' },
-    az:     { label:'Acc Z',       unit:'mg',  icon:'📐', color:'text-purple-300' },
-    cnt:    { label:'Contatore',   unit:'',    icon:'🔢', color:'text-slate-300'  },
-    rssi:   { label:'RSSI',        unit:'dBm', icon:'📶', color:'text-slate-500'  },
-    ela_id: { label:'ELA ID',      unit:'',    icon:'🔧', color:'text-slate-400'  },
-    mfr_cid:{ label:'Mfr CID',     unit:'',    icon:'🏭', color:'text-slate-400'  },
-    raw:    { label:'Raw HEX',     unit:'',    icon:'🗂️', color:'text-slate-500'  },
+    temp:    { label:'Temperatura', unit:'°C',  icon:'T' },
+    hum:     { label:'Umidità',     unit:'%',   icon:'H' },
+    pir:     { label:'Presenza',    unit:'',    icon:'P' },
+    mov:     { label:'Movimento',   unit:'',    icon:'M' },
+    mag:     { label:'Magnete',     unit:'',    icon:'B' },
+    di:      { label:'Ingresso',    unit:'',    icon:'D' },
+    ax:      { label:'Acc X',       unit:'mg',  icon:'X' },
+    ay:      { label:'Acc Y',       unit:'mg',  icon:'Y' },
+    az:      { label:'Acc Z',       unit:'mg',  icon:'Z' },
+    cnt:     { label:'Contatore',   unit:'',    icon:'#' },
+    rssi:    { label:'RSSI',        unit:'dBm', icon:'R' },
+    ela_id:  { label:'ELA ID',      unit:'',    icon:'E' },
+    mfr_cid: { label:'Mfr CID',     unit:'',    icon:'F' },
+    raw:     { label:'Raw HEX',     unit:'',    icon:'~' },
 };
 
 function parsePayload(rawString) {
-    // Formato: "Connected, key=val;key=val;..."
-    // oppure stringhe legacy: "Online, ...", "Disconnected", ecc.
     const fields = {};
-    let isConnected = false;
-    let isOffline   = false;
-    let isNotConfig = false;
-
+    let isConnected = false, isOffline = false, isNotConfig = false;
     if (rawString.includes('Connected')) {
         isConnected = true;
         const dataPart = rawString.split(',').slice(1).join(',').trim();
@@ -191,21 +560,20 @@ function parsePayload(rawString) {
     } else {
         isNotConfig = true;
     }
-
     return { isConnected, isOffline, isNotConfig, fields };
 }
 
 // ================================================================
-//  SENSOR CARD — mostra tutti i campi dinamicamente
+//  SENSOR CARDS
 // ================================================================
 function createSensorCard(id) {
     const div = document.createElement('div');
     div.id = `sensor-card-${id}`;
-    div.className = "sensor-card bg-slate-800 p-4 rounded-xl border border-slate-700";
+    div.className = 'sensor-card';
     div.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Sensore ${id}</div>
-            <div id="sensor-status-${id}" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 font-bold uppercase tracking-wider">Wait</div>
+        <div class="sensor-header">
+            <span class="sensor-title">Sensore ${id}</span>
+            <span id="sensor-status-${id}" class="status-badge">WAIT</span>
         </div>
         <div id="sensor-fields-${id}" class="field-grid"></div>
     `;
@@ -213,330 +581,214 @@ function createSensorCard(id) {
 }
 
 function updateSensorCard(id, rawString) {
-    const card    = document.getElementById(`sensor-card-${id}`);
-    const statusEl= document.getElementById(`sensor-status-${id}`);
-    const fieldsEl= document.getElementById(`sensor-fields-${id}`);
+    const card     = document.getElementById(`sensor-card-${id}`);
+    const statusEl = document.getElementById(`sensor-status-${id}`);
+    const fieldsEl = document.getElementById(`sensor-fields-${id}`);
     if (!card) return;
-
     const { isConnected, isOffline, isNotConfig, fields } = parsePayload(rawString);
-
     if (isConnected) {
-        // Stato card
-        statusEl.textContent = 'ONLINE';
-        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-emerald-900/50 text-emerald-400 font-bold uppercase tracking-wider border border-emerald-900';
-        card.className       = 'sensor-card bg-slate-800 p-4 rounded-xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
-
-        // Aggiorna i campi
+        card.className = 'sensor-card online';
+        statusEl.textContent = 'ONLINE'; statusEl.className = 'status-badge online';
         fieldsEl.innerHTML = '';
         const keys = Object.keys(fields);
         if (keys.length === 0) {
-            fieldsEl.innerHTML = '<span class="text-xs text-slate-500 italic">Nessun dato</span>';
+            fieldsEl.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">Nessun dato</span>';
         } else {
             keys.forEach(k => {
-                const meta  = FIELD_META[k] || { label: k, unit: '', icon: '📌', color: 'text-slate-300' };
-                const pill  = document.createElement('div');
+                const meta = FIELD_META[k] || { label: k, unit: '', icon: '·' };
+                const pill = document.createElement('div');
                 pill.className = 'field-pill';
                 pill.innerHTML = `
-                    <span class="field-key">${meta.icon} ${meta.label}</span>
-                    <span class="field-val ${meta.color}">${fields[k]}${meta.unit ? '<span class="text-[10px] font-normal text-slate-500 ml-1">' + meta.unit + '</span>' : ''}</span>
+                    <div class="field-key">[${meta.icon}] ${meta.label}</div>
+                    <div class="field-val">${fields[k]}<span class="field-unit">${meta.unit}</span></div>
                 `;
                 fieldsEl.appendChild(pill);
             });
         }
     } else if (isOffline) {
-        statusEl.textContent = 'OFFLINE';
-        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-red-900/50 text-red-400 font-bold uppercase tracking-wider border border-red-900';
-        card.className       = 'sensor-card bg-slate-800 p-4 rounded-xl border border-red-500/30 opacity-75';
-        fieldsEl.innerHTML   = '<span class="text-xs text-slate-500 italic">In attesa del beacon...</span>';
+        card.className = 'sensor-card offline';
+        statusEl.textContent = 'OFFLINE'; statusEl.className = 'status-badge offline';
+        fieldsEl.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">In attesa del beacon...</span>';
     } else {
-        statusEl.textContent = 'NON CONFIG.';
-        statusEl.className   = 'text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-500 font-bold uppercase tracking-wider';
-        card.className       = 'sensor-card bg-slate-800/50 p-4 rounded-xl border border-slate-700 border-dashed opacity-50';
-        fieldsEl.innerHTML   = '';
+        card.className = 'sensor-card uncfg';
+        statusEl.textContent = 'NON CFG'; statusEl.className = 'status-badge';
+        fieldsEl.innerHTML = '';
     }
 }
 
 // ================================================================
-//  CONNESSIONE BLE
+//  RELAY
 // ================================================================
-function addLog(msg, type='info') {
-    const entry = document.createElement('div');
-    const color = type==='error'?'text-red-400':type==='success'?'text-emerald-400':type==='rx'?'text-cyan-400':'text-slate-400';
-    entry.className = color;
-    entry.textContent = `${type==='rx'?'RX < ':type==='tx'?'TX > ':'> '}${msg}`;
-    logEl.appendChild(entry);
-    logEl.scrollTop = logEl.scrollHeight;
+function createRelayButton(index) {
+    const btn = document.createElement('button');
+    btn.id = `relay-btn-${index}`;
+    btn.className = 'relay-btn';
+    btn.onclick = () => toggleRelay(index);
+    btn.innerHTML = `
+        <div id="relay-led-${index}" class="relay-led"></div>
+        <div class="relay-label">R${index + 1}</div>
+    `;
+    relayGrid.appendChild(btn);
+}
+async function toggleRelay(index) {
+    if (!relayCharacteristics[index]) return;
+    const ns = !relayStates[index];
+    updateRelayUI(index, ns);
+    try {
+        await relayCharacteristics[index].writeValue(new TextEncoder().encode(ns ? "1" : "0"));
+        addLog(`Relè ${index + 1} → ${ns ? 1 : 0}`, 'tx');
+    } catch(e) {
+        addLog(`Err Relè ${index + 1}: ${e.message}`, 'error');
+        updateRelayUI(index, !ns);
+    }
+}
+function updateRelayUI(index, state) {
+    relayStates[index] = state;
+    const btn = document.getElementById(`relay-btn-${index}`);
+    const led = document.getElementById(`relay-led-${index}`);
+    if (!btn) return;
+    btn.className = state ? 'relay-btn on' : 'relay-btn';
+    led.className = state ? 'relay-led on' : 'relay-led';
 }
 
+// ================================================================
+//  CONFIG SLOTS
+// ================================================================
 function getConfigSlotUUID(index, type) {
     const padding = index < 10 ? "00000" : "0000";
     return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
 }
-
-async function connect() {
-    try {
-        updateStatus('connecting');
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters:[{services:[CONFIG_SVC_UUID]},{services:[HUB_SVC_UUID]}],
-            optionalServices:[CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
-        });
-        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-        gattServer = await bleDevice.gatt.connect();
-        const services = await gattServer.getPrimaryServices();
-        let mode='UNKNOWN';
-        for (const s of services) {
-            if (s.uuid===CONFIG_SVC_UUID){ mode='CONFIG'; activeService=s; }
-            else if (s.uuid===HUB_SVC_UUID){ mode='HUB'; activeService=s; }
-        }
-        if (mode==='CONFIG') await setupConfigMode();
-        else if (mode==='HUB') await setupHubMode();
-        else throw new Error("Nessun servizio compatibile trovato.");
-        updateStatus('connected', mode);
-        addLog(`Connesso: ${mode}`, 'success');
-    } catch(error) {
-        addLog(`Errore: ${error.message}`, 'error');
-        updateStatus('disconnected');
-    }
-}
-
-async function setupConfigMode() {
-    configPanel.classList.remove('hidden');
-    hubPanel.classList.add('hidden');
-    configSlotsContainer.innerHTML='';
-    try {
-        const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-        const count = parseInt(new TextDecoder().decode(await countChar.readValue()));
-        document.getElementById('sensorCountInput').value = count;
-        addLog(`Config: ${count} sensori.`, 'rx');
-        try {
-            const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-            document.getElementById('hubNameInput').value = new TextDecoder().decode(await nameChar.readValue());
-        } catch(e){}
-        for(let i=1;i<=count;i++){
-            createConfigSlot(i);
-            await readConfigSlotValues(i);
-            await new Promise(r=>setTimeout(r,50));
-        }
-        const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
-        if(resetChar.properties.notify){
-            await resetChar.startNotifications();
-            resetChar.addEventListener('characteristicvaluechanged',(e)=>{
-                if(new TextDecoder().decode(e.target.value)==="0"){
-                    document.getElementById('resetFeedback').textContent="Reset Completato!";
-                    document.getElementById('resetFeedback').className="text-[10px] text-center mt-2 text-emerald-400 font-bold";
-                    addLog("Factory Reset Confermato.", 'success');
-                }
-            });
-        }
-    } catch(e){ addLog("Errore config: "+e.message,'error'); }
-}
-
-async function setupHubMode() {
-    configPanel.classList.add('hidden');
-    hubPanel.classList.remove('hidden');
-    sensorGrid.innerHTML=''; relayGrid.innerHTML=''; relayCharacteristics=[];
-    document.getElementById('liveHubName').textContent='--';
-
-    // Relè
-    try {
-        const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
-        addLog("Servizio Relè trovato.", 'success');
-        for(let i=0;i<6;i++){
-            try {
-                const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
-                relayCharacteristics[i]=char;
-                createRelayButton(i);
-                try {
-                    await char.startNotifications();
-                    char.addEventListener('characteristicvaluechanged',(event)=>{
-                        updateRelayUI(i, new TextDecoder().decode(event.target.value)==="1");
-                    });
-                } catch(e){}
-                try {
-                    updateRelayUI(i, new TextDecoder().decode(await char.readValue())==="1");
-                } catch(e){}
-            } catch(e){}
-        }
-    } catch(e){ addLog("Nessun servizio Relè.", 'error'); }
-
-    // Sensori
-    try {
-        try {
-            const nc = await activeService.getCharacteristic(CHAR_NAME_UUID);
-            document.getElementById('liveHubName').textContent = new TextDecoder().decode(await nc.readValue());
-        } catch(e){ document.getElementById('liveHubName').textContent='Hub Device'; }
-
-        const characteristics = await activeService.getCharacteristics();
-        let sensorCount=0;
-        characteristics.forEach(c=>{ if(c.uuid!==CHAR_NAME_UUID) sensorCount++; });
-        document.getElementById('hubSensorCountBadge').textContent=`${sensorCount} Sensori`;
-
-        let sIdx=0;
-        for(let i=0;i<characteristics.length;i++){
-            const char=characteristics[i];
-            if(char.uuid===CHAR_NAME_UUID) continue;
-            sIdx++;
-            const cid=sIdx;
-            createSensorCard(cid);
-            try {
-                await char.startNotifications();
-                char.addEventListener('characteristicvaluechanged',(e)=>{
-                    const val = new TextDecoder().decode(e.target.value);
-                    updateSensorCard(cid, val);
-                    addLog(`S${cid}: ${val}`, 'rx');
-                });
-                updateSensorCard(cid, new TextDecoder().decode(await char.readValue()));
-                await new Promise(r=>setTimeout(r,50));
-            } catch(e){}
-        }
-    } catch(e){ addLog("Err Hub: "+e.message,'error'); }
-}
-
-// --- Relè ---
-function createRelayButton(index) {
-    const btn=document.createElement('button');
-    btn.id=`relay-btn-${index}`;
-    btn.className="relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
-    btn.onclick=()=>toggleRelay(index);
-    btn.innerHTML=`<div id="relay-led-${index}" class="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner"></div>
-                   <span class="text-[10px] font-bold text-slate-300">RELÈ ${index+1}</span>`;
-    relayGrid.appendChild(btn);
-}
-async function toggleRelay(index) {
-    if(!relayCharacteristics[index]) return;
-    const ns=!relayStates[index];
-    updateRelayUI(index,ns);
-    try {
-        await relayCharacteristics[index].writeValue(new TextEncoder().encode(ns?"1":"0"));
-        addLog(`Relè ${index+1} -> ${ns?1:0}`,'tx');
-    } catch(e){ addLog(`Err Relè ${index+1}: ${e.message}`,'error'); updateRelayUI(index,!ns); }
-}
-function updateRelayUI(index,state) {
-    relayStates[index]=state;
-    const btn=document.getElementById(`relay-btn-${index}`);
-    const led=document.getElementById(`relay-led-${index}`);
-    if(state){
-        btn.className="relay-btn bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-500/50 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
-        led.className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,1)] mb-1";
-    } else {
-        btn.className="relay-btn bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg p-3 flex flex-col items-center justify-center gap-1 active:scale-95";
-        led.className="w-2 h-2 rounded-full bg-slate-500 mb-1 shadow-inner";
-    }
-}
-
-// --- Config slot ---
 function createConfigSlot(index) {
-    const div=document.createElement('div');
-    div.className="bg-slate-800 rounded-xl p-4 border border-slate-700 relative hover:border-slate-500 transition-all";
-    div.innerHTML=`
-        <div class="absolute top-2 right-3 text-[10px] font-bold text-slate-500">SLOT ${index}</div>
-        <div class="space-y-3 mt-2">
-            <div>
-                <label class="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">MAC Address Sensore</label>
-                <div class="flex gap-2 mt-1">
-                    <input type="text" id="mac-address-${index}" placeholder="In attesa..." maxlength="17"
-                        class="flex-1 bg-slate-900 border border-slate-600 rounded-lg text-sm px-3 py-2 font-mono text-slate-200 focus:border-emerald-500 outline-none uppercase transition-all">
-                    <button onclick="saveSlotMAC(${index})" class="bg-slate-700 hover:bg-emerald-600 text-white px-4 rounded-lg text-xs font-bold transition-all active:scale-95">SALVA</button>
-                </div>
-                <p class="text-[9px] text-slate-500 mt-1 italic">Formato: AA:BB:CC:11:22:33</p>
+    const div = document.createElement('div');
+    div.className = 'config-slot panel';
+    div.innerHTML = `
+        <span class="slot-badge">SLOT ${index}</span>
+        <div style="margin-top:0.3rem;">
+            <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">MAC Address Sensore</label>
+            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                <input type="text" id="mac-address-${index}" placeholder="In attesa..." maxlength="17"
+                    class="input-text" style="flex:1;text-transform:uppercase;">
+                <button onclick="saveSlotMAC(${index})" id="mac-save-btn-${index}" class="btn btn-secondary btn-sm">SALVA</button>
             </div>
-        </div>`;
+            <p class="hint">Formato: AA:BB:CC:11:22:33</p>
+        </div>
+    `;
     configSlotsContainer.appendChild(div);
 }
 async function readConfigSlotValues(index) {
-    const macInput=document.getElementById(`mac-address-${index}`);
-    macInput.placeholder="Lettura...";
+    const macInput = document.getElementById(`mac-address-${index}`);
+    macInput.placeholder = 'Lettura...';
     try {
-        const c=await activeService.getCharacteristic(getConfigSlotUUID(index,2));
-        const v=new TextDecoder().decode(await c.readValue());
-        macInput.value = v.length>=12 ? v.toUpperCase() : '';
-        if(!macInput.value) macInput.placeholder="Slot Vuoto";
-    } catch(e){ macInput.placeholder="Errore Lettura"; }
+        const c = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
+        const v = new TextDecoder().decode(await c.readValue());
+        macInput.value = v.length >= 12 ? v.toUpperCase() : '';
+        if (!macInput.value) macInput.placeholder = 'Slot Vuoto';
+    } catch(e) { macInput.placeholder = 'Errore Lettura'; }
 }
 window.saveSlotMAC = async function(index) {
-    let val=document.getElementById(`mac-address-${index}`).value.trim().toUpperCase();
-    if(!/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/.test(val))
-        return alert("⚠️ Formato MAC non valido!\nEs: AA:BB:CC:DD:EE:FF");
-    val=val.replace(/-/g,':');
-    document.getElementById(`mac-address-${index}`).value=val;
+    let val = document.getElementById(`mac-address-${index}`).value.trim().toUpperCase();
+    if (!/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/.test(val))
+        return alert('⚠ Formato MAC non valido!\nEs: AA:BB:CC:DD:EE:FF');
+    val = val.replace(/-/g, ':');
+    document.getElementById(`mac-address-${index}`).value = val;
     try {
-        const char=await activeService.getCharacteristic(getConfigSlotUUID(index,2));
-        addLog(`Scrittura MAC Slot ${index}...`,'tx');
+        const char = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
+        addLog(`Scrittura MAC Slot ${index}...`, 'tx');
         await char.writeValue(new TextEncoder().encode(val.toLowerCase()));
-        addLog(`Slot ${index}: ${val}`,'success');
-        const btn=document.querySelector(`#mac-address-${index}`).nextElementSibling;
-        const orig=btn.className;
-        btn.className="bg-emerald-500 text-white px-4 rounded-lg text-xs font-bold";
-        btn.textContent="✔ FATTO";
-        setTimeout(()=>{ btn.className=orig; btn.textContent="SALVA"; },1500);
-    } catch(e){ addLog(`Err Slot ${index}: ${e.message}`,'error'); }
+        addLog(`Slot ${index}: ${val}`, 'success');
+        const btn = document.getElementById(`mac-save-btn-${index}`);
+        const orig = btn.className;
+        btn.textContent = '✔ OK'; btn.className = 'btn btn-sm' ; btn.style.background='#16a34a';
+        setTimeout(() => { btn.className = orig; btn.textContent = 'SALVA'; btn.style.background=''; }, 1500);
+    } catch(e) { addLog(`Err Slot ${index}: ${e.message}`, 'error'); }
 };
 
+// ================================================================
+//  SAVE NAME / COUNT / RESET
+// ================================================================
 async function saveHubName() {
-    const val=document.getElementById('hubNameInput').value.trim();
-    if(!val) return alert("Inserisci un nome valido");
+    const val = document.getElementById('hubNameInput').value.trim();
+    if (!val) return alert('Inserisci un nome valido');
     try {
-        const c=await activeService.getCharacteristic(CHAR_NAME_UUID);
+        const c = await activeService.getCharacteristic(CHAR_NAME_UUID);
         await c.writeValue(new TextEncoder().encode(val));
-        addLog("Nome salvato!",'success');
-    } catch(e){ addLog("Err nome: "+e.message,'error'); }
+        addLog('Nome salvato!', 'success');
+    } catch(e) { addLog('Err nome: ' + e.message, 'error'); }
 }
+
+// Punto 2: dopo aver salvato il numero sensori, scollega e riapre la ricerca
 async function saveSensorCount() {
-    const val=document.getElementById('sensorCountInput').value;
-    if(!val) return;
-    const n=parseInt(val);
-    if(n<1||n>10) return alert("1-10 sensori.");
+    const val = document.getElementById('sensorCountInput').value;
+    if (!val) return;
+    const n = parseInt(val);
+    if (n < 1 || n > 10) return alert('Valore 1–10 sensori.');
     try {
-        const c=await activeService.getCharacteristic(CHAR_COUNT_UUID);
+        const c = await activeService.getCharacteristic(CHAR_COUNT_UUID);
         await c.writeValue(new TextEncoder().encode(val));
-        addLog("Salvato. Riavvio...",'success');
-        setTimeout(()=>{ if(bleDevice&&bleDevice.gatt.connected) bleDevice.gatt.disconnect(); },1500);
-    } catch(e){ addLog("Err count: "+e.message,'error'); }
+        addLog('Salvato. Il dispositivo si riavvia...', 'success');
+        // Attende riavvio, poi scollega e riapre la ricerca
+        setTimeout(async () => {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+                bleDevice.gatt.disconnect();
+            }
+            updateStatus('disconnected');
+            bleDevice = null; gattServer = null; activeService = null;
+            addLog('Riconnessione dopo riavvio...', 'info');
+            await new Promise(r => setTimeout(r, 500));
+            if (checkBleSupport()) connect();
+        }, 1500);
+    } catch(e) { addLog('Err count: ' + e.message, 'error'); }
 }
+
+// Punto 2: dopo factory reset, scollega e riapre la ricerca
 async function performReset() {
-    if(!confirm("Reset TUTTA la configurazione?")) return;
+    if (!confirm('Reset TUTTA la configurazione?')) return;
     try {
-        const c=await activeService.getCharacteristic(CHAR_RESET_UUID);
+        const c = await activeService.getCharacteristic(CHAR_RESET_UUID);
         await c.writeValue(new TextEncoder().encode("1"));
-        addLog("Reset richiesto...",'tx');
-    } catch(e){ addLog("Err reset: "+e.message,'error'); }
+        addLog('Reset richiesto...', 'tx');
+        setTimeout(async () => {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+                bleDevice.gatt.disconnect();
+            }
+            updateStatus('disconnected');
+            bleDevice = null; gattServer = null; activeService = null;
+            document.getElementById('resetFeedback').textContent = '';
+            addLog('Riconnessione dopo reset...', 'info');
+            await new Promise(r => setTimeout(r, 800));
+            if (checkBleSupport()) connect();
+        }, 2000);
+    } catch(e) { addLog('Err reset: ' + e.message, 'error'); }
 }
 
-function updateStatus(state, mode='') {
-    const st=document.getElementById('statusText');
-    const ic=document.getElementById('statusIcon');
-    const rn=document.getElementById('statusRing');
-    const mt=document.getElementById('modeText');
-    if(state==='connecting'){
-        st.textContent="Connessione..."; rn.classList.remove('hidden');
-        ic.className="relative inline-flex w-3 h-3 rounded-full bg-blue-500";
-        connectBtn.disabled=true; connectBtn.textContent="Ricerca...";
-    } else if(state==='connected'){
-        st.textContent="Connesso"; st.className="text-xs font-bold uppercase tracking-tight text-emerald-400";
-        rn.classList.add('hidden');
-        ic.className="relative inline-flex w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
-        mt.textContent=mode==='CONFIG'?"MODALITÀ CONFIGURAZIONE":"MODALITÀ OPERATIVA";
-        mt.className=mode==='CONFIG'?"text-[10px] text-yellow-400 font-bold font-mono":"text-[10px] text-blue-300 font-bold font-mono";
-        connectBtn.classList.add('hidden'); disconnectBtn.classList.remove('hidden');
-    } else {
-        st.textContent="Disconnesso"; st.className="text-xs font-bold uppercase tracking-tight text-slate-400";
-        rn.classList.add('hidden');
-        ic.className="relative inline-flex w-3 h-3 rounded-full bg-red-500";
-        mt.textContent="--"; connectBtn.disabled=false;
-        connectBtn.textContent="📡 Connetti Dispositivo";
-        connectBtn.classList.remove('hidden'); disconnectBtn.classList.add('hidden');
-        configPanel.classList.add('hidden'); hubPanel.classList.add('hidden');
-        sensorGrid.innerHTML=''; configSlotsContainer.innerHTML='';
-    }
-}
-function onDisconnected(){ updateStatus('disconnected'); addLog('Connessione persa.','warn'); }
-
+// ================================================================
+//  EVENTI
+// ================================================================
 connectBtn.addEventListener('click', connect);
-disconnectBtn.addEventListener('click', ()=>{ if(bleDevice&&bleDevice.gatt.connected) bleDevice.gatt.disconnect(); });
+disconnectBtn.addEventListener('click', () => {
+    if (bleDevice && bleDevice.gatt.connected) {
+        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+        bleDevice.gatt.disconnect();
+    }
+    updateStatus('disconnected');
+    bleDevice = null; gattServer = null; activeService = null;
+});
 document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
 document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
-document.getElementById('clearLog').addEventListener('click', ()=>logEl.innerHTML='<div class="text-slate-600 italic">> Log pulito.</div>');
+document.getElementById('clearLog').addEventListener('click', () => {
+    logEl.innerHTML = '<span style="color:#334155;font-style:italic;">> Log pulito.</span>';
+});
+document.getElementById('clearLogMobile').addEventListener('click', () => {
+    logMobile.innerHTML = '<span style="color:#334155;font-style:italic;">> Log pulito.</span>';
+});
+
+// ================================================================
+//  INIT
+// ================================================================
+checkBleSupport();
 </script>
 </body>
 </html>
