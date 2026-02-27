@@ -289,25 +289,30 @@ function checkBleSupport() {
     const alertEl = document.getElementById('ble-alert');
     const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isBrave = navigator.brave !== undefined;
 
     if (isIOS) {
         alertEl.style.display = 'block';
         alertEl.innerHTML = `⚠ <strong>iOS non supporta Web Bluetooth.</strong><br>
-            Usa un dispositivo Android con Chrome/Edge/Brave, oppure un PC (Windows/macOS/Linux) con Chrome.<br>
+            Usa Android con Chrome/Edge/Brave, oppure un PC con Chrome.<br>
             <a href="https://apps.apple.com/app/bluefy/id1492822055" target="_blank">→ Alternativa: app Bluefy su iOS</a>`;
         connectBtn.disabled = true;
         return false;
     }
     if (!navigator.bluetooth) {
+        // Brave con BT disabilitato — navigator.bluetooth è undefined
+        const extraMsg = isBrave
+            ? `<br>Sei su <strong>Brave</strong>: vai su <code>brave://flags</code>, cerca <em>"bluetooth"</em> e imposta <strong>Web Bluetooth API → Enabled</strong>, poi riavvia Brave.`
+            : `<br>Usa <strong>Chrome</strong> o <strong>Edge</strong> su Android o PC. Firefox e Safari non sono supportati.`;
         alertEl.style.display = 'block';
-        alertEl.innerHTML = `⚠ <strong>Questo browser non supporta Web Bluetooth.</strong><br>
-            Apri questa pagina con <strong>Chrome</strong> o <strong>Edge</strong> su Android o PC.<br>
-            Firefox e Safari non sono supportati.`;
+        alertEl.innerHTML = `⚠ <strong>Web Bluetooth non disponibile.</strong>${extraMsg}`;
         connectBtn.disabled = true;
         return false;
     }
+    alertEl.style.display = 'none';
     return true;
 }
+
 
 // ================================================================
 //  LOG — scrive su entrambi i log (sidebar desktop + mobile)
