@@ -21,65 +21,54 @@
         * { box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; min-height: 100vh; }
 
-        /* ---- LAYOUT ---- */
         #app-shell { display: flex; flex-direction: column; min-height: 100vh; }
-
-        /* Mobile: tutto in colonna */
-        #sidebar  { padding: 1rem; border-bottom: 1px solid var(--border); }
+        #sidebar   { padding: 1rem; border-bottom: 1px solid var(--border); }
         #main-area { flex: 1; padding: 1rem; overflow-y: auto; }
 
-        /* Desktop: sidebar sinistra + main destra */
         @media (min-width: 900px) {
             #app-shell { flex-direction: row; }
             #sidebar   { width: 320px; min-width: 280px; max-width: 340px; border-bottom: none; border-right: 2px solid var(--border); padding: 1.5rem; overflow-y: auto; height: 100vh; position: sticky; top: 0; }
             #main-area { padding: 1.5rem 2rem; }
         }
 
-        /* ---- PANEL BASE ---- */
         .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
         .panel-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
 
-        /* ---- STATUS BAR ---- */
         #status-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: #0a1628; border: 1px solid var(--border); border-radius: 4px; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
-        .status-dot.connected    { background: var(--success); box-shadow: 0 0 6px var(--success); }
-        .status-dot.connecting   { background: var(--warn); animation: blink 0.8s step-end infinite; }
-        @keyframes blink { 50%{ opacity:0; } }
-        #status-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-        #mode-label   { font-size: 0.65rem; color: var(--muted); font-family: monospace; margin-left: auto; }
+        .status-dot.connected  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+        .status-dot.connecting { background: var(--warn); animation: blink 0.8s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* ---- BUTTONS ---- */
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
                padding: 0.6rem 1.2rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem;
                border: none; cursor: pointer; transition: background 0.15s, transform 0.1s; width: 100%; }
-        .btn:active { transform: scale(0.97); }
+        .btn:active  { transform: scale(0.97); }
         .btn-primary   { background: var(--accent); color: #fff; }
         .btn-primary:hover  { background: var(--accent-hover); }
         .btn-secondary { background: #334155; color: var(--text); }
         .btn-secondary:hover { background: #475569; }
         .btn-danger    { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
         .btn-danger:hover { background: var(--danger); color: #fff; }
-        .btn-sm        { padding: 0.4rem 0.8rem; font-size: 0.72rem; width: auto; }
-        .btn:disabled  { opacity: 0.4; cursor: not-allowed; }
+        .btn-sm  { padding: 0.4rem 0.8rem; font-size: 0.72rem; width: auto; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* ---- FORM ELEMENTS ---- */
         .form-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
         .form-row label { font-size: 0.78rem; color: var(--text); }
         .input-text { background: #0a1628; border: 1px solid var(--border); border-radius: 4px;
                       padding: 0.45rem 0.6rem; color: var(--text); font-family: monospace; font-size: 0.82rem;
                       outline: none; transition: border-color 0.15s; }
         .input-text:focus { border-color: var(--accent); }
-        .input-num  { width: 4rem; text-align: center; }
-        .hint       { font-size: 0.62rem; color: var(--muted); font-style: italic; margin-top: 0.25rem; }
+        .input-num { width: 4rem; text-align: center; }
+        .hint { font-size: 0.62rem; color: var(--muted); font-style: italic; margin-top: 0.25rem; }
 
-        /* ---- SENSOR CARDS ---- */
         #sensorGrid { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
         @media (min-width: 900px) { #sensorGrid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); } }
 
         .sensor-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; }
-        .sensor-card.online   { border-color: var(--success); }
-        .sensor-card.offline  { border-color: #7f1d1d; opacity: 0.75; }
-        .sensor-card.uncfg    { border: 1px dashed var(--border); opacity: 0.5; }
+        .sensor-card.online  { border-color: var(--success); }
+        .sensor-card.offline { border-color: #7f1d1d; opacity: 0.75; }
+        .sensor-card.uncfg   { border: 1px dashed var(--border); opacity: 0.5; }
 
         .sensor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
         .sensor-title  { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
@@ -93,68 +82,91 @@
         .field-val  { font-size: 0.88rem; font-family: monospace; color: var(--text); font-weight: 700; }
         .field-unit { font-size: 0.62rem; color: var(--muted); margin-left: 2px; font-weight: 400; }
 
-        /* ---- RELAY GRID ---- */
         #relayGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
         @media (min-width: 900px) { #relayGrid { grid-template-columns: repeat(6, 1fr); } }
 
         .relay-btn { background: #1e293b; border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.3rem; cursor: pointer; text-align: center; transition: all 0.15s; }
         .relay-btn:hover  { border-color: #64748b; }
         .relay-btn:active { transform: scale(0.95); }
-        .relay-btn.on     { background: #14532d; border-color: #16a34a; }
+        .relay-btn.on { background: #14532d; border-color: #16a34a; }
         .relay-led  { width: 8px; height: 8px; border-radius: 50%; background: #334155; margin: 0 auto 4px; }
         .relay-led.on { background: #4ade80; box-shadow: 0 0 6px #16a34a; }
         .relay-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
 
-        /* ---- CONFIG SLOTS ---- */
-        .config-slot { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; position: relative; }
+        .config-slot { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; position: relative; margin-bottom: 0.75rem; }
         .slot-badge  { position: absolute; top: 0.4rem; right: 0.6rem; font-size: 0.58rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
         /* ---- LOG ---- */
-        #log-wrap   { margin-top: auto; padding-top: 0.75rem; }
-        #log        { font-family: monospace; font-size: 0.68rem; background: #020617; border: 1px solid #1e293b; border-radius: 4px; padding: 0.5rem; height: 120px; overflow-y: auto; color: var(--muted); line-height: 1.5; }
-        .log-rx     { color: #22d3ee; }
-        .log-tx     { color: #a78bfa; }
-        .log-ok     { color: #4ade80; }
-        .log-err    { color: #f87171; }
-        .log-hdr    { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
-        .log-lbl    { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+        #log, #logMobile {
+            font-family: monospace; font-size: 0.68rem;
+            background: #020617; border: 1px solid #1e293b;
+            border-radius: 0 0 4px 4px; padding: 0.5rem;
+            overflow-y: auto; color: var(--muted); line-height: 1.5;
+            display: flex; flex-direction: column;
+        }
+        .log-hdr {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: #0a1628; border: 1px solid #1e293b;
+            border-radius: 4px; padding: 0.35rem 0.6rem;
+            cursor: pointer; user-select: none;
+            transition: border-radius 0.25s;
+        }
+        .log-hdr.open { border-radius: 4px 4px 0 0; }
+        .log-hdr:hover { background: #0f2040; }
+        .log-lbl { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
+        .log-toggle-icon { margin-left: auto; font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+        .log-toggle-icon.open { transform: rotate(180deg); }
+        .log-preview {
+            font-family: monospace; font-size: 0.68rem;
+            flex: 1; min-width: 0; padding: 0 0.5rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            color: var(--muted);
+        }
+        .log-body {
+            overflow: hidden;
+            transition: height 0.25s ease;
+            height: 0;
+        }
+        .log-body.open { height: 180px; }
 
-        /* ---- ALERT BANNER ---- */
+        .log-rx  { color: #22d3ee; }
+        .log-ok  { color: #4ade80; }
+        .log-err { color: #f87171; }
+        .log-tx  { color: #a78bfa; }
+
         #ble-alert { display: none; background: #78350f; border: 1px solid #92400e; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.75rem; color: #fcd34d; }
         #ble-alert a { color: #fde68a; text-decoration: underline; }
 
-        /* ---- HEADER ---- */
         #app-header { padding: 0 0 0.75rem 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
         #app-title  { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text); }
         #app-sub    { font-size: 0.62rem; color: var(--muted); font-family: monospace; margin-top: 2px; }
+
+        @media (min-width: 900px) { #log-wrap-mobile { display: none; } .hidden-mobile { display: block !important; } }
+        @media (max-width: 899px)  { #log-wrap { display: none !important; } }
     </style>
 </head>
 <body>
 
 <div id="app-shell">
 
-    <!-- SIDEBAR / HEADER MOBILE -->
+    <!-- SIDEBAR -->
     <div id="sidebar">
         <div id="app-header">
             <div id="app-title">⬡ Smart Hub Controller</div>
             <div id="app-sub">Universal Beacon Manager</div>
         </div>
 
-        <!-- Alert iOS/browser non compatibile -->
         <div id="ble-alert"></div>
 
-        <!-- Status bar -->
         <div id="status-bar">
             <div id="statusDot" class="status-dot"></div>
-            <span id="statusText" class="status-label" style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Disconnesso</span>
-            <span id="modeText" class="mode-label" style="font-size:0.65rem;color:var(--muted);font-family:monospace;margin-left:auto;">--</span>
+            <span id="statusText" style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Disconnesso</span>
+            <span id="modeText" style="font-size:0.65rem;color:var(--muted);font-family:monospace;margin-left:auto;">--</span>
         </div>
 
-        <!-- Pulsanti connessione -->
         <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">📡 Connetti Dispositivo</button>
         <button id="disconnectBtn" class="btn btn-secondary hidden">✕ Scollega</button>
 
-        <!-- CONFIG: impostazioni sistema -->
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
             <div class="form-row">
@@ -174,35 +186,36 @@
             <p class="hint">* Cambiare il numero sensori riavvia il dispositivo.</p>
         </div>
 
-        <!-- CONFIG: zona pericolosa -->
         <div id="dangerPanel" class="panel hidden" style="border-color:#7f1d1d;">
             <div class="panel-title" style="color:#f87171;">Zona Pericolosa</div>
             <button id="resetBtn" class="btn btn-danger">⚠ Factory Reset</button>
             <p id="resetFeedback" class="hint" style="text-align:center;min-height:1rem;margin-top:0.4rem;"></p>
         </div>
 
-        <!-- Log (desktop: nella sidebar; mobile: in fondo) -->
+        <!-- Log desktop -->
         <div id="log-wrap" class="hidden-mobile" style="margin-top:1rem;">
-            <div class="log-hdr">
-                <span class="log-lbl">Console Log</span>
-                <button id="clearLog" style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;">Pulisci</button>
+            <div id="log-hdr-desk" class="log-hdr" onclick="toggleLog('desk')">
+                <span class="log-lbl">LOG</span>
+                <span id="log-preview" class="log-preview">> Ready.</span>
+                <button onclick="event.stopPropagation(); clearLogFn('log','log-preview')"
+                    style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;flex-shrink:0;">Pulisci</button>
+                <span id="log-icon-desk" class="log-toggle-icon">▼</span>
             </div>
-            <div id="log"><span style="color:#334155;font-style:italic;">> Ready.</span></div>
+            <div id="log-body-desk" class="log-body">
+                <div id="log"></div>
+            </div>
         </div>
     </div>
 
-    <!-- MAIN AREA -->
+    <!-- MAIN -->
     <div id="main-area">
 
-        <!-- CONFIG SLOTS -->
         <div id="configSlotsWrapper" class="hidden">
             <div id="configSlotsContainer"></div>
         </div>
 
-        <!-- HUB PANEL -->
         <div id="hubPanel" class="hidden">
 
-            <!-- Hub info bar -->
             <div class="panel" style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 1rem;">
                 <div>
                     <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">Live Data Stream</div>
@@ -214,38 +227,30 @@
                 <span id="hubSensorCountBadge" style="font-size:0.62rem;background:#0a1628;padding:0.25rem 0.5rem;border-radius:3px;border:1px solid var(--border);color:var(--muted);">0 Sensori</span>
             </div>
 
-            <!-- Relay -->
             <div class="panel">
                 <div class="panel-title">⚡ Controllo Relè</div>
                 <div id="relayGrid"></div>
             </div>
 
-            <!-- Sensor cards -->
             <div id="sensorGrid"></div>
         </div>
 
-        <!-- Log (solo mobile) -->
+        <!-- Log mobile -->
         <div id="log-wrap-mobile" style="margin-top:1rem;">
-            <div class="log-hdr">
-                <span class="log-lbl">Console Log</span>
-                <button id="clearLogMobile" style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;">Pulisci</button>
+            <div id="log-hdr-mob" class="log-hdr" onclick="toggleLog('mob')">
+                <span class="log-lbl">LOG</span>
+                <span id="logMobile-preview" class="log-preview">> Ready.</span>
+                <button onclick="event.stopPropagation(); clearLogFn('logMobile','logMobile-preview')"
+                    style="font-size:0.65rem;background:none;border:none;color:var(--accent);cursor:pointer;flex-shrink:0;">Pulisci</button>
+                <span id="log-icon-mob" class="log-toggle-icon">▼</span>
             </div>
-            <div id="logMobile"><span style="color:#334155;font-style:italic;">> Ready.</span></div>
+            <div id="log-body-mob" class="log-body">
+                <div id="logMobile"></div>
+            </div>
         </div>
 
     </div>
 </div>
-
-<style>
-    /* Log mobile: nascosto su desktop, visibile su mobile */
-    @media (min-width: 900px) {
-        #log-wrap-mobile { display: none; }
-        .hidden-mobile { display: block !important; }
-    }
-    @media (max-width: 899px) {
-        #log-wrap { display: none !important; }
-    }
-</style>
 
 <script>
 // ================================================================
@@ -268,7 +273,7 @@ let relayStates=[false,false,false,false,false,false];
 let relayCharacteristics=[];
 
 // ================================================================
-//  REFS DOM
+//  DOM REFS
 // ================================================================
 const connectBtn           = document.getElementById('connectBtn');
 const disconnectBtn        = document.getElementById('disconnectBtn');
@@ -283,12 +288,61 @@ const relayGrid            = document.getElementById('relayGrid');
 const configSlotsContainer = document.getElementById('configSlotsContainer');
 
 // ================================================================
+//  LOG
+// ================================================================
+function toggleLog(side) {
+    const body = document.getElementById(side === 'desk' ? 'log-body-desk' : 'log-body-mob');
+    const icon = document.getElementById(side === 'desk' ? 'log-icon-desk' : 'log-icon-mob');
+    const hdr  = document.getElementById(side === 'desk' ? 'log-hdr-desk'  : 'log-hdr-mob');
+    const isOpen = body.classList.contains('open');
+    if (isOpen) {
+        body.classList.remove('open');
+        icon.classList.remove('open');
+        hdr.classList.remove('open');
+    } else {
+        body.classList.add('open');
+        icon.classList.add('open');
+        hdr.classList.add('open');
+    }
+}
+
+function clearLogFn(logId, previewId) {
+    document.getElementById(logId).innerHTML = '';
+    const prev = document.getElementById(previewId);
+    prev.textContent = '> Log pulito.';
+    prev.className = 'log-preview';
+}
+
+function addLog(msg, type='info') {
+    const cls    = type==='error'?'log-err':type==='success'?'log-ok':type==='rx'?'log-rx':type==='tx'?'log-tx':'';
+    const prefix = type==='rx'?'RX < ':type==='tx'?'TX > ':'> ';
+    const text   = prefix + msg;
+
+    // Aggiorna anteprima header
+    ['log-preview', 'logMobile-preview'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'log-preview' + (cls ? ' ' + cls : '');
+    });
+
+    // Inserisce in cima al log espanso (più recente in alto)
+    [logEl, logMobile].forEach(el => {
+        if (!el) return;
+        const d = document.createElement('div');
+        if (cls) d.className = cls;
+        d.textContent = text;
+        el.prepend(d);
+    });
+}
+
+// ================================================================
 //  BLE COMPATIBILITY CHECK
 // ================================================================
 function checkBleSupport() {
     const alertEl = document.getElementById('ble-alert');
-    const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIOS   = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isBrave = navigator.brave !== undefined;
 
     if (isIOS) {
@@ -300,7 +354,6 @@ function checkBleSupport() {
         return false;
     }
     if (!navigator.bluetooth) {
-        // Brave con BT disabilitato — navigator.bluetooth è undefined
         const extraMsg = isBrave
             ? `<br>Sei su <strong>Brave</strong>: vai su <code>brave://flags</code>, cerca <em>"bluetooth"</em> e imposta <strong>Web Bluetooth API → Enabled</strong>, poi riavvia Brave.`
             : `<br>Usa <strong>Chrome</strong> o <strong>Edge</strong> su Android o PC. Firefox e Safari non sono supportati.`;
@@ -313,30 +366,13 @@ function checkBleSupport() {
     return true;
 }
 
-
-// ================================================================
-//  LOG — scrive su entrambi i log (sidebar desktop + mobile)
-// ================================================================
-function addLog(msg, type='info') {
-    const cls = type==='error'?'log-err':type==='success'?'log-ok':type==='rx'?'log-rx':type==='tx'?'log-tx':'';
-    const prefix = type==='rx'?'RX < ':type==='tx'?'TX > ':'> ';
-    [logEl, logMobile].forEach(el => {
-        if (!el) return;
-        const d = document.createElement('div');
-        if (cls) d.className = cls;
-        d.textContent = prefix + msg;
-        el.appendChild(d);
-        el.scrollTop = el.scrollHeight;
-    });
-}
-
 // ================================================================
 //  STATUS
 // ================================================================
 function updateStatus(state, mode='') {
-    const dot  = document.getElementById('statusDot');
-    const st   = document.getElementById('statusText');
-    const mt   = document.getElementById('modeText');
+    const dot = document.getElementById('statusDot');
+    const st  = document.getElementById('statusText');
+    const mt  = document.getElementById('modeText');
 
     dot.className = 'status-dot';
     if (state === 'connecting') {
@@ -362,7 +398,6 @@ function updateStatus(state, mode='') {
         connectBtn.textContent = '📡 Connetti Dispositivo';
         connectBtn.classList.remove('hidden');
         disconnectBtn.classList.add('hidden');
-        // Nascondi tutti i pannelli
         sysPanel.classList.add('hidden');
         dangerPanel.classList.add('hidden');
         configSlotsWrapper.classList.add('hidden');
@@ -376,19 +411,12 @@ function updateStatus(state, mode='') {
 
 // ================================================================
 //  DISCONNECT / LOST CONNECTION
-//  Punto 1: quando si perde la connessione, torna alla schermata
-//  di ricerca dispositivo (apre automaticamente il dialog BLE).
 // ================================================================
 function onDisconnected() {
     addLog('Connessione persa. Nuova ricerca...', 'error');
     updateStatus('disconnected');
-    bleDevice = null;
-    gattServer = null;
-    activeService = null;
-    // Riapre automaticamente la finestra di ricerca BLE dopo 800ms
-    setTimeout(() => {
-        if (checkBleSupport()) connect();
-    }, 800);
+    bleDevice = null; gattServer = null; activeService = null;
+    setTimeout(() => { if (checkBleSupport()) connect(); }, 800);
 }
 
 // ================================================================
@@ -407,11 +435,11 @@ async function connect() {
         const services = await gattServer.getPrimaryServices();
         let mode = 'UNKNOWN';
         for (const s of services) {
-            if (s.uuid === CONFIG_SVC_UUID) { mode = 'CONFIG'; activeService = s; }
-            else if (s.uuid === HUB_SVC_UUID) { mode = 'HUB'; activeService = s; }
+            if (s.uuid === CONFIG_SVC_UUID)   { mode = 'CONFIG'; activeService = s; }
+            else if (s.uuid === HUB_SVC_UUID) { mode = 'HUB';    activeService = s; }
         }
-        if (mode === 'CONFIG') await setupConfigMode();
-        else if (mode === 'HUB') await setupHubMode();
+        if (mode === 'CONFIG')      await setupConfigMode();
+        else if (mode === 'HUB')    await setupHubMode();
         else throw new Error('Nessun servizio compatibile trovato.');
         updateStatus('connected', mode);
         addLog(`Connesso: ${mode}`, 'success');
@@ -444,7 +472,6 @@ async function setupConfigMode() {
             await readConfigSlotValues(i);
             await new Promise(r => setTimeout(r, 50));
         }
-        // Notifiche reset
         try {
             const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
             if (resetChar.properties.notify) {
@@ -474,7 +501,6 @@ async function setupHubMode() {
     relayCharacteristics = [];
     document.getElementById('liveHubName').textContent = '--';
 
-    // Relè
     try {
         const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
         addLog('Servizio Relè trovato.', 'success');
@@ -494,7 +520,6 @@ async function setupHubMode() {
         }
     } catch(e) { addLog('Nessun servizio Relè.', 'error'); }
 
-    // Sensori
     try {
         try {
             const nc = await activeService.getCharacteristic(CHAR_NAME_UUID);
@@ -590,7 +615,7 @@ function updateSensorCard(id, rawString) {
     const statusEl = document.getElementById(`sensor-status-${id}`);
     const fieldsEl = document.getElementById(`sensor-fields-${id}`);
     if (!card) return;
-    const { isConnected, isOffline, isNotConfig, fields } = parsePayload(rawString);
+    const { isConnected, isOffline, fields } = parsePayload(rawString);
     if (isConnected) {
         card.className = 'sensor-card online';
         statusEl.textContent = 'ONLINE'; statusEl.className = 'status-badge online';
@@ -665,7 +690,7 @@ function getConfigSlotUUID(index, type) {
 }
 function createConfigSlot(index) {
     const div = document.createElement('div');
-    div.className = 'config-slot panel';
+    div.className = 'config-slot';
     div.innerHTML = `
         <span class="slot-badge">SLOT ${index}</span>
         <div style="margin-top:0.3rem;">
@@ -702,14 +727,14 @@ window.saveSlotMAC = async function(index) {
         await char.writeValue(new TextEncoder().encode(val.toLowerCase()));
         addLog(`Slot ${index}: ${val}`, 'success');
         const btn = document.getElementById(`mac-save-btn-${index}`);
-        const orig = btn.className;
-        btn.textContent = '✔ OK'; btn.className = 'btn btn-sm' ; btn.style.background='#16a34a';
-        setTimeout(() => { btn.className = orig; btn.textContent = 'SALVA'; btn.style.background=''; }, 1500);
+        const origClass = btn.className;
+        btn.textContent = '✔ OK'; btn.style.background = '#16a34a';
+        setTimeout(() => { btn.className = origClass; btn.textContent = 'SALVA'; btn.style.background = ''; }, 1500);
     } catch(e) { addLog(`Err Slot ${index}: ${e.message}`, 'error'); }
 };
 
 // ================================================================
-//  SAVE NAME / COUNT / RESET
+//  SAVE NAME
 // ================================================================
 async function saveHubName() {
     const val = document.getElementById('hubNameInput').value.trim();
@@ -721,7 +746,9 @@ async function saveHubName() {
     } catch(e) { addLog('Err nome: ' + e.message, 'error'); }
 }
 
-// Punto 2: dopo aver salvato il numero sensori, scollega e riapre la ricerca
+// ================================================================
+//  SAVE COUNT
+// ================================================================
 async function saveSensorCount() {
     const val = document.getElementById('sensorCountInput').value;
     if (!val) return;
@@ -729,46 +756,35 @@ async function saveSensorCount() {
     if (n < 1 || n > 10) return alert('Valore 1–10 sensori.');
     try {
         const c = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-
-        // Scrivi SENZA await — non aspettiamo la conferma
         c.writeValue(new TextEncoder().encode(val)).catch(() => {});
-
         addLog('Salvataggio inviato. Disconnessione...', 'success');
-
-        // Disconnetti e riapri subito
         bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
         bleDevice.gatt.disconnect();
         updateStatus('disconnected');
         bleDevice = null; gattServer = null; activeService = null;
-
         await new Promise(r => setTimeout(r, 300));
         if (checkBleSupport()) connect();
-
     } catch(e) { addLog('Err count: ' + e.message, 'error'); }
 }
 
+// ================================================================
+//  FACTORY RESET
+// ================================================================
 async function performReset() {
     if (!confirm('Reset TUTTA la configurazione?')) return;
     try {
         const c = await activeService.getCharacteristic(CHAR_RESET_UUID);
-
-        // Scrivi SENZA await
         c.writeValue(new TextEncoder().encode("1")).catch(() => {});
-
         addLog('Reset inviato. Disconnessione...', 'tx');
-
         bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
         bleDevice.gatt.disconnect();
         updateStatus('disconnected');
         bleDevice = null; gattServer = null; activeService = null;
         document.getElementById('resetFeedback').textContent = '';
-
         await new Promise(r => setTimeout(r, 300));
         if (checkBleSupport()) connect();
-
     } catch(e) { addLog('Err reset: ' + e.message, 'error'); }
 }
-
 
 // ================================================================
 //  EVENTI
@@ -785,12 +801,6 @@ disconnectBtn.addEventListener('click', () => {
 document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
 document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
-document.getElementById('clearLog').addEventListener('click', () => {
-    logEl.innerHTML = '<span style="color:#334155;font-style:italic;">> Log pulito.</span>';
-});
-document.getElementById('clearLogMobile').addEventListener('click', () => {
-    logMobile.innerHTML = '<span style="color:#334155;font-style:italic;">> Log pulito.</span>';
-});
 
 // ================================================================
 //  INIT
