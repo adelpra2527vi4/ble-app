@@ -644,10 +644,14 @@ const FIELD_META = {
 function parsePayload(rawString) {
     const fields = {};
     let isConnected = false, isOffline = false, isNotConfig = false;
-    if (rawString.includes('Connected')) {
+
+    // Se la stringa contiene dati (non è un errore o offline)
+    if (rawString.includes('=') && !rawString.includes('Disconnected') && !rawString.includes('Offline')) {
         isConnected = true;
-        const dataPart = rawString.split(',').slice(1).join(',').trim();
-        dataPart.split(';').forEach(pair => {
+        
+        // Dividiamo la stringa in parti (mac=...; name=...; temp=...; rssi=...)
+        const parts = rawString.split(';');
+        parts.forEach(pair => {
             const eq = pair.indexOf('=');
             if (eq < 0) return;
             const k = pair.substring(0, eq).trim();
@@ -661,7 +665,6 @@ function parsePayload(rawString) {
     }
     return { isConnected, isOffline, isNotConfig, fields };
 }
-
 // ================================================================
 //  SENSOR CARDS
 // ================================================================
@@ -683,34 +686,59 @@ function updateSensorCard(id, rawString) {
     const card     = document.getElementById(`sensor-card-${id}`);
     const statusEl = document.getElementById(`sensor-status-${id}`);
     const fieldsEl = document.getElementById(`sensor-fields-${id}`);
+    const titleEl  = card ? card.querySelector('.sensor-title') : null;
+    
     if (!card) return;
     const { isConnected, isOffline, fields } = parsePayload(rawString);
+    
     if (isConnected) {
         card.className = 'sensor-card online';
-        statusEl.textContent = 'ONLINE'; statusEl.className = 'status-badge online';
+        statusEl.textContent = 'ONLINE'; 
+        statusEl.className = 'status-badge online';
+        
+        // RIPRISTINO TITOLO CON NUMERO SENSORE
+        if (titleEl) titleEl.textContent = `Sensore ${id}`;
+
         fieldsEl.innerHTML = '';
+        
+        // BOX INFO (MAC e NOME) - Rimane come intestazione dei dati
+        const infoRow = document.createElement('div');
+        infoRow.style = "grid-column: 1 / -1; background: #1e293b; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #334155;";
+        infoRow.innerHTML = `
+            <div style="font-size: 0.55rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Device Info</div>
+            <div style="font-family: monospace; font-size: 0.75rem; color: #4ade80; display: flex; justify-content: space-between;">
+                <span>${fields.mac || 'N/A'}</span>
+                <span style="color: #64748b;">${fields.name || '---'}</span>
+            </div>
+        `;
+        fieldsEl.appendChild(infoRow);
+
         const keys = Object.keys(fields);
-        if (keys.length === 0) {
-            fieldsEl.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">Nessun dato</span>';
-        } else {
-            keys.forEach(k => {
-                const meta = FIELD_META[k] || { label: k, unit: '', icon: '·' };
-                const pill = document.createElement('div');
-                pill.className = 'field-pill';
-                pill.innerHTML = `
-                    <div class="field-key">[${meta.icon}] ${meta.label}</div>
-                    <div class="field-val">${fields[k]}<span class="field-unit">${meta.unit}</span></div>
-                `;
-                fieldsEl.appendChild(pill);
-            });
-        }
+        const skipKeys = ['mac', 'name']; 
+        
+        keys.forEach(k => {
+            if (skipKeys.includes(k)) return; 
+            
+            const meta = FIELD_META[k] || { label: k, unit: '', icon: '·' };
+            const pill = document.createElement('div');
+            pill.className = 'field-pill';
+            pill.innerHTML = `
+                <div class="field-key">[${meta.icon}] ${meta.label}</div>
+                <div class="field-val">${fields[k]}<span class="field-unit">${meta.unit}</span></div>
+            `;
+            fieldsEl.appendChild(pill);
+        });
     } else if (isOffline) {
         card.className = 'sensor-card offline';
-        statusEl.textContent = 'OFFLINE'; statusEl.className = 'status-badge offline';
+        statusEl.textContent = 'OFFLINE'; 
+        statusEl.className = 'status-badge offline';
+        if (titleEl) titleEl.textContent = `Sensore ${id}`;
         fieldsEl.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">In attesa del beacon...</span>';
     } else {
         card.className = 'sensor-card uncfg';
-        statusEl.textContent = 'NON CFG'; statusEl.className = 'status-badge';
+        statusEl.textContent = 'NON CFG'; 
+        statusEl.className = 'status-badge';
+        if (titleEl) titleEl.textContent = `Sensore ${id}`;
         fieldsEl.innerHTML = '';
     }
 }
