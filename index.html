@@ -191,6 +191,8 @@
         <button id="disconnectBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem;">✕ Scollega</button>
         
         <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">ℹ️ Guida Installatore</button>
+        
+        <button id="scannerBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">📡 Radar BLE</button>
 
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
@@ -279,52 +281,80 @@
 <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <span class="modal-title">Manuale Installatore</span>
+            <span class="modal-title">Manuale Installatore (Motore V3.0)</span>
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
             <h3>Introduzione</h3>
-            <p>Questo Hub HVAC è progettato per leggere qualsiasi sensore Bluetooth Low Energy (BLE). L'installatore utilizza l'App <b>nRF Connect</b> per analizzare i segnali e compila una "Regola di decodifica" nella Web App.</p>
+            <p>Questo Hub è pensato per catturare al volo i segnali dei sensori Bluetooth (BLE) ed estrarne i dati grezzi. Di solito, ci si arma di un'app come <b>nRF Connect</b> per "annusare" i pacchetti radio e poi si compila una "Regola di decodifica" nella Web App, usandola come un vero e proprio bisturi digitale.</p>
 
-            <h3>1. Sintassi della Regola</h3>
-            <p>La regola istruisce l'Hub sulla posizione esatta dei dati nel pacchetto BLE. È composta da 6 parametri separati da virgola:<br>
+            <h3>1. La Sintassi: Il Bisturi</h3>
+            <p>La regola serve a spiegare all'Hub dove pescare esattamente i dati nel pacchetto. Si compone di 6 parametri separati da virgola:<br>
             <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
-            <p><i>Nota: Puoi inserire più regole nello stesso slot separandole con un punto e virgola ( <b>;</b> ).</i></p>
+            <p><i>Nota: si possono inserire più regole nello stesso slot separandole semplicemente con un punto e virgola ( <b>;</b> ).</i></p>
 
-            <h3>2. Analisi dei Parametri</h3>
+            <h3>2. I Parametri al volo</h3>
             <ul>
-                <li><b>FONTE:</b> Si determina dal <b>Type</b> del pacchetto sull'app. Type <code>0x16</code> = <code>SVC</code>. Type <code>0xFF</code> = <code>MFR</code>.</li>
-                <li><b>ID:</b> Con <code>SVC</code>, sono i primi 2 byte <b>invertiti</b> (es. <code>6e 2a</code> diventa <code>2A6E</code>). Con <code>MFR</code>, è il codice azienda (es. <code>0757</code> per ELA).</li>
-                <li><b>OFFSET:</b> Numero di coppie (byte) da saltare partendo da 0. Con <code>SVC</code> l'Hub ignora l'ID iniziale (offset base = 0).</li>
+                <li><b>FONTE:</b> Dove cercare. <code>SVC</code> (Service Data, Type 0x16) oppure <code>MFR</code> (Manufacturer Data, Type 0xFF).</li>
+                <li><b>ID:</b> L'identificativo. Nel caso di <code>SVC</code>, sono i primi 2 byte invertiti (es. <code>6e2a</code> diventa <code>2A6E</code>). Con <code>MFR</code> è il codice dell'azienda. <b>💡 Il trucco:</b> se l'ID è sconosciuto, basta mettere <code>0</code> per dare in pasto all'Hub l'intero pacchetto!</li>
+                <li><b>OFFSET:</b> Quanti byte (coppie di caratteri) saltare partendo dall'inizio per centrare il valore desiderato.</li>
                 <li><b>LUNGHEZZA:</b> I byte occupati dal dato (da 1 a 4).</li>
-                <li><b>OPERATORE (Potenziato):</b> Definisce la conversione del dato. Puoi combinare prefissi speciali:
+                <li><b>OPERATORE:</b> Come tradurre il numero in un dato leggibile.
                     <ul style="margin-top:0.3rem; margin-bottom:0.3rem; color:#94a3b8;">
-                        <li><b>S</b> = Signed (Abilita i numeri negativi per temperature sotto zero).</li>
-                        <li><b>B</b> = Big-Endian (Inverte la lettura per sensori come RuuviTag).</li>
+                        <li><code>100</code> = Divide per 100 (es. 2450 diventa 24.50).</li>
+                        <li><code>S1</code> = Signed (abilita i numeri negativi, fondamentale per i termometri d'inverno).</li>
+                        <li><code>B1</code> = Big-Endian (inverte l'ordine dei byte se il numero sembra totalmente sballato).</li>
+                        <li><code>36</code> = Se il sensore spara un "36" fisso per dire che una porta è aperta, dividendo per 36 si ottiene un comodissimo "1" (acceso/spento).</li>
                     </ul>
-                    <i>Esempi:</i><br> 
-                    <code>100</code> (divide per 100 per i decimali)<br>
-                    <code>S100</code> (divide per 100, leggendo anche i numeri negativi)<br>
-                    <code>BS10</code> (Big-Endian, negativi abilitati, divide per 10)<br>
-                    <code>&1</code> (estrae l'ultimo bit di stato per rilevamento porte/PIR)<br>
-                    <code>>>1</code> (ignora l'ultimo bit per leggere un contatore rilevamenti)<br>
-                    <code>%1000</code> (estrae il Resto della divisione, es. per i sensori Govee)
                 </li>
-                <li><b>NOME:</b> L'etichetta del valore (es. <code>temp</code>, <code>hum</code>, <code>pir</code>).</li>
+                <li><b>NOME:</b> L'etichetta finale da mostrare (es. <code>temp</code>, <code>lux</code>, <code>pir</code>).</li>
             </ul>
 
-            <h3>3. Esempi Rapidi</h3>
+            <h3>3. 🕵️‍♂️ La "Scanner Mode" (Per sensori sconosciuti)</h3>
+            <p>Quando non si ha la più pallida idea di dove siano nascosti i dati, si può creare una regola "Scanner" per stampare a schermo i byte puri e guardarli in diretta:</p>
+            <code>MFR,0,8,1,1,b8; MFR,0,9,1,1,b9; MFR,0,10,1,1,b10; MFR,0,11,1,1,b11</code>
+            <p>A questo punto, basta guardare la Web App e "stimolare" il sensore (coprendolo, scaldandolo o muovendo il magnete). Il valore "b" che cambia all'istante indica l'OFFSET giusto!</p>
+
+            <h3>4. ⚠ Le trappole classiche</h3>
+            <ul>
+                <li><b>Il Finto MAC:</b> Molti sensori infilano il proprio indirizzo MAC dentro ai dati (spesso specchiato). Se spuntano valori altissimi e immobili, probabilmente si sta leggendo il MAC. Soluzione: aumentare l'OFFSET per saltarlo a piè pari.</li>
+                <li><b>Valori "ballerini":</b> Se i numeri saltano ciclicamente senza senso logico, è molto probabile che si stia leggendo un "contatore di pacchetti" interno. Meglio spostare l'OFFSET di un byte.</li>
+            </ul>
+
+            <h3>5. Esempi Pronti</h3>
             <p>
-                <b>Sensore ELA (Temp. negativa):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
-                <b>Xiaomi (Temp e Hum):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code><br>
-                <b>Sensore Govee (Fusione dati):</b> <code>MFR,EC88,3,3,10000,temp;MFR,EC88,3,3,%1000,hum</code>
+                <b>ELA Temp (con negativi):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
+                <b>Shelly BLU (Lux + Porta):</b> <code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code><br>
+                <b>Xiaomi (Temp + Hum):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code>
             </p>
         </div>
     </div>
 </div>
+
+<div id="scannerModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <span class="modal-title" style="display:flex; align-items:center; gap:10px;">
+                Radar Bluetooth 
+                <span id="live-badge" style="font-size: 0.6em; background: #64748b; padding: 2px 6px; border-radius: 4px; color:white;">OFF</span>
+            </span>
+            <button id="closeScannerBtn" class="modal-close">×</button>
+        </div>
+        <div class="modal-body" style="padding: 1.5rem;">
+            <p style="margin-bottom: 1rem; color: var(--muted);">Usa questo strumento per intercettare i sensori sconosciuti. Avvia lo scanner e muovi il sensore (o coprilo) per vedere quale payload cambia!</p>
+            
+            <button id="btn-toggle-scanner" class="btn" style="width: 100%; margin-bottom: 15px; background: var(--accent); color: white; text-align: center;">▶ Avvia Scansione Etere</button>
+            
+            <div id="scanner-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <div style="text-align: center; color: var(--muted); padding: 20px;">Nessun dato. Avvia lo scanner.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // ================================================================
-//  UUID
+//  UUID E VARIABILI GLOBALI
 // ================================================================
 const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
 const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
@@ -337,10 +367,16 @@ const RELAY_UUIDS = [
 const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff';
 const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa';
 const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
+const SNIFFER_UUID    = 'dddd0001-0000-1000-8000-00805f9baaaa';
 
 let bleDevice=null, gattServer=null, activeService=null;
 let relayStates=[false,false,false,false,false,false];
 let relayCharacteristics=[];
+
+// Variabili per lo scanner
+let snifferCharacteristic = null;
+let isScanning = false;
+let scannedDevices = {};
 
 // ================================================================
 //  DOM REFS
@@ -357,6 +393,7 @@ const sensorGrid           = document.getElementById('sensorGrid');
 const relayGrid            = document.getElementById('relayGrid');
 const configSlotsContainer = document.getElementById('configSlotsContainer');
 const infoModal            = document.getElementById('infoModal');
+const scannerModal         = document.getElementById('scannerModal');
 
 // ================================================================
 //  LOG
@@ -475,6 +512,14 @@ function updateStatus(state, mode='') {
         configSlotsContainer.innerHTML = '';
         relayGrid.innerHTML = '';
         relayCharacteristics = [];
+        
+        // Reset Scanner in caso di disconnessione
+        isScanning = false;
+        snifferCharacteristic = null;
+        document.getElementById('btn-toggle-scanner').innerHTML = "▶ Avvia Scansione Etere";
+        document.getElementById('btn-toggle-scanner').style.background = "var(--accent)";
+        document.getElementById('live-badge').innerHTML = "OFF";
+        document.getElementById('live-badge').style.background = "#64748b";
     }
 }
 
@@ -528,6 +573,16 @@ async function setupConfigMode() {
     hubPanel.classList.add('hidden');
     configSlotsContainer.innerHTML = '';
     try {
+        // --- INIZIO CONNESSIONE SCANNER ---
+        try {
+            snifferCharacteristic = await activeService.getCharacteristic(SNIFFER_UUID);
+            await snifferCharacteristic.startNotifications();
+            snifferCharacteristic.addEventListener('characteristicvaluechanged', handleSnifferData);
+        } catch (e) {
+            console.warn("Sniffer non trovato (vecchio firmware?)", e);
+        }
+        // --- FINE CONNESSIONE SCANNER ---
+
         const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
         const count = parseInt(new TextDecoder().decode(await countChar.readValue()));
         document.getElementById('sensorCountInput').value = count;
@@ -928,7 +983,128 @@ async function performReset() {
 }
 
 // ================================================================
-//  EVENTI & MODAL INFO
+//  LOGICA SCANNER BLE
+// ================================================================
+async function toggleScanner() {
+    if (!snifferCharacteristic) {
+        alert("Devi connetterti all'Hub (Modalità Configurazione) per usare lo scanner!");
+        return;
+    }
+    const btn = document.getElementById('btn-toggle-scanner');
+    const badge = document.getElementById('live-badge');
+    
+    if (!isScanning) {
+        scannedDevices = {}; // reset lista
+        renderScannerList();
+        try {
+            await snifferCharacteristic.writeValue(new TextEncoder().encode("1"));
+            isScanning = true;
+            btn.innerHTML = "⏹ Ferma Scansione";
+            btn.style.background = "var(--danger)";
+            badge.innerHTML = "LIVE";
+            badge.style.background = "var(--danger)";
+            addLog("Scanner BLE avviato", "tx");
+        } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
+    } else {
+        try {
+            await snifferCharacteristic.writeValue(new TextEncoder().encode("0"));
+            isScanning = false;
+            btn.innerHTML = "▶ Avvia Scansione Etere";
+            btn.style.background = "var(--accent)";
+            badge.innerHTML = "OFF";
+            badge.style.background = "#64748b";
+            addLog("Scanner BLE fermato", "tx");
+        } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
+    }
+}
+
+function handleSnifferData(event) {
+    let value = new TextDecoder().decode(event.target.value);
+    let parts = value.split(';');
+    if (parts.length >= 3) {
+        let mac = parts[0];
+        let rssi = parts[1];
+        let payload = parts.slice(2).join(';');
+        scannedDevices[mac] = { rssi: parseInt(rssi), payload: payload, time: new Date().toLocaleTimeString() };
+        renderScannerList();
+    }
+}
+
+function renderScannerList() {
+    const list = document.getElementById("scanner-list");
+    let devices = Object.keys(scannedDevices).map(mac => ({mac, ...scannedDevices[mac]}));
+    
+    if (devices.length === 0) {
+        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">In attesa di segnali... 📡</div>`;
+        return;
+    }
+
+    devices.sort((a, b) => b.rssi - a.rssi); // Ordina dal più vicino al più lontano
+    list.innerHTML = devices.map(dev => {
+        let type = "N/A";
+        let id = "0000";
+        let rawHex = "";
+
+        // Spacchettamento del Payload
+        if (dev.payload.startsWith("MFR=")) {
+            type = "MFR";
+            let raw = dev.payload.substring(4);
+            id = raw.substring(0, 4).toUpperCase(); // I primi 2 byte sono il Company ID
+            rawHex = raw.substring(4); // Il resto sono i dati veri
+        } else if (dev.payload.startsWith("SVC=")) {
+            type = "SVC";
+            let parts = dev.payload.split("=");
+            id = parts[1].toUpperCase(); // UUID
+            rawHex = parts[2] || ""; // Il resto sono i dati veri
+        }
+
+        let byteLen = rawHex.length / 2;
+
+        // Generazione della griglia dei byte con gli OFFSET
+        let gridHtml = "";
+        for (let i = 0; i < byteLen; i++) {
+            let byteStr = rawHex.substring(i * 2, i * 2 + 2);
+            gridHtml += `
+                <div style="display:flex; flex-direction:column; align-items:center; background:#1e293b; border: 1px solid #334155; border-radius:4px; overflow:hidden;">
+                    <div title="Offset da usare nella regola" style="background:#0f172a; font-size:0.55rem; font-weight:bold; color:#38bdf8; width:100%; text-align:center; padding:2px 0; border-bottom:1px solid #334155;">
+                        ${i}
+                    </div>
+                    <div style="font-size:0.85rem; font-family:monospace; font-weight:bold; color:#e2e8f0; padding:2px 5px;">
+                        ${byteStr}
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+        <div style="border: 1px solid var(--border); padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            
+            <div style="display:flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
+                <b style="color: #f8fafc; font-family:monospace; font-size:1.1rem; letter-spacing: 0.05em;">${dev.mac}</b>
+                <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
+            </div>
+
+            <div style="display:flex; gap:12px; font-size:0.75rem; margin-bottom: 10px; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b;">
+                <div><span style="color:#a78bfa; font-weight:bold; font-size:0.65rem;">TYPE:</span> <span style="font-family:monospace;">${type}</span></div>
+                <div><span style="color:#fbbf24; font-weight:bold; font-size:0.65rem;">ID:</span> <span style="font-family:monospace; color:#fde047;">${id}</span></div>
+                <div><span style="color:#4ade80; font-weight:bold; font-size:0.65rem;">LEN:</span> <span style="font-family:monospace;">${byteLen}</span> byte</div>
+            </div>
+
+            <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Value Data (Offset → Byte Hex)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
+                ${gridHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
+            </div>
+
+            <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">
+                ⏱ ${dev.time}
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// ================================================================
+//  EVENTI
 // ================================================================
 connectBtn.addEventListener('click', connect);
 disconnectBtn.addEventListener('click', () => {
@@ -943,18 +1119,24 @@ document.getElementById('saveCountBtn').addEventListener('click', saveSensorCoun
 document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
 
-// Apertura/Chiusura pannello Info
-document.getElementById('infoBtn').addEventListener('click', () => {
-    infoModal.classList.add('open');
+// Apertura/Chiusura Info
+document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('open'));
+document.getElementById('closeModalBtn').addEventListener('click', () => infoModal.classList.remove('open'));
+infoModal.addEventListener('click', (e) => { if (e.target === infoModal) infoModal.classList.remove('open'); });
+
+// Apertura/Chiusura Scanner
+document.getElementById('scannerBtn').addEventListener('click', () => scannerModal.classList.add('open'));
+document.getElementById('closeScannerBtn').addEventListener('click', async () => {
+    scannerModal.classList.remove('open');
+    if (isScanning) await toggleScanner();
 });
-document.getElementById('closeModalBtn').addEventListener('click', () => {
-    infoModal.classList.remove('open');
+scannerModal.addEventListener('click', async (e) => { 
+    if (e.target === scannerModal) {
+        scannerModal.classList.remove('open');
+        if (isScanning) await toggleScanner();
+    } 
 });
-infoModal.addEventListener('click', (e) => {
-    if (e.target === infoModal) {
-        infoModal.classList.remove('open');
-    }
-});
+document.getElementById('btn-toggle-scanner').addEventListener('click', toggleScanner);
 
 // ================================================================
 //  INIT
