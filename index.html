@@ -165,6 +165,29 @@
         .modal-body li { margin-bottom: 0.4rem; }
         .modal-body code { background: #0a1628; padding: 0.15rem 0.3rem; border-radius: 3px; font-family: monospace; color: #60a5fa; border: 1px solid #1e293b; font-size: 0.75rem;}
 
+        /* ---- RADAR ENHANCEMENTS ---- */
+        .radar-byte {
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; 
+            background: #1e293b; border: 1px solid #334155; border-radius: 4px; overflow: hidden;
+            transition: transform 0.1s;
+        }
+        .radar-byte:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .radar-byte-header {
+            background: #0f172a; font-size: 0.55rem; font-weight: bold; color: #38bdf8; 
+            width: 100%; text-align: center; padding: 2px 0; border-bottom: 1px solid #334155;
+        }
+        .radar-byte-val {
+            font-size: 0.85rem; font-family: monospace; font-weight: bold; color: #e2e8f0; 
+            padding: 3px 6px; transition: background-color 0.4s ease, color 0.4s ease;
+        }
+        .radar-byte-val.changed { background-color: var(--danger); color: #fff; }
+
+        .btn-pin {
+            background: #1e293b; color: var(--muted); border: 1px solid var(--border);
+            padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: bold; cursor: pointer;
+        }
+        .btn-pin.active { background: var(--accent); color: white; border-color: var(--accent-hover); }
+
         @media (min-width: 900px) { #log-wrap-mobile { display: none; } .hidden-mobile { display: block !important; } }
         @media (max-width: 899px)  { #log-wrap { display: none !important; } }
     </style>
@@ -983,8 +1006,10 @@ async function performReset() {
 }
 
 // ================================================================
-//  LOGICA SCANNER BLE
+//  LOGICA SCANNER BLE (MIGLIORATA)
 // ================================================================
+let pinnedMac = null; // Memorizza il MAC isolato
+
 async function toggleScanner() {
     if (!snifferCharacteristic) {
         alert("Devi connetterti all'Hub (Modalità Configurazione) per usare lo scanner!");
@@ -994,7 +1019,8 @@ async function toggleScanner() {
     const badge = document.getElementById('live-badge');
     
     if (!isScanning) {
-        scannedDevices = {}; // reset lista
+        scannedDevices = {}; 
+        pinnedMac = null; // Resetta il focus
         renderScannerList();
         try {
             await snifferCharacteristic.writeValue(new TextEncoder().encode("1"));
@@ -1025,62 +1051,101 @@ function handleSnifferData(event) {
         let mac = parts[0];
         let rssi = parts[1];
         let payload = parts.slice(2).join(';');
-        scannedDevices[mac] = { rssi: parseInt(rssi), payload: payload, time: new Date().toLocaleTimeString() };
+        
+        // Salvo il payload precedente per confrontarlo
+        let prevPayload = scannedDevices[mac] ? scannedDevices[mac].payload : payload;
+
+        scannedDevices[mac] = { 
+            rssi: parseInt(rssi), 
+            payload: payload, 
+            prevPayload: prevPayload,
+            time: new Date().toLocaleTimeString() 
+        };
         renderScannerList();
     }
 }
+
+// Funzione globale per isolare un sensore
+window.togglePin = function(mac) {
+    pinnedMac = (pinnedMac === mac) ? null : mac;
+    renderScannerList();
+};
+
+// Funzione globale per generare e copiare la regola
+window.copyRule = function(type, id, offset) {
+    const rule = `${type},${id},${offset},1,1,dato_nuovo`;
+    navigator.clipboard.writeText(rule).then(() => {
+        alert(`🎯 Regola Base copiata!\n\n${rule}\n\nIncollala nello slot e modificala (es. cambia 'dato_nuovo' in 'temp' e adatta la lunghezza).`);
+    }).catch(err => {
+        alert("Errore nella copia: " + err);
+    });
+};
 
 function renderScannerList() {
     const list = document.getElementById("scanner-list");
     let devices = Object.keys(scannedDevices).map(mac => ({mac, ...scannedDevices[mac]}));
     
+    // Applica il filtro se c'è un MAC "Pinnato"
+    if (pinnedMac) {
+        devices = devices.filter(d => d.mac === pinnedMac);
+    } else {
+        devices.sort((a, b) => b.rssi - a.rssi); // Più vicini prima
+    }
+
     if (devices.length === 0) {
         list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">In attesa di segnali... 📡</div>`;
         return;
     }
 
-    devices.sort((a, b) => b.rssi - a.rssi); // Ordina dal più vicino al più lontano
     list.innerHTML = devices.map(dev => {
-        let type = "N/A";
-        let id = "0000";
-        let rawHex = "";
+        let type = "N/A"; let id = "0000"; let rawHex = ""; let prevHex = "";
 
-        // Spacchettamento del Payload
+        // Estrazione dati attuali
         if (dev.payload.startsWith("MFR=")) {
             type = "MFR";
             let raw = dev.payload.substring(4);
-            id = raw.substring(0, 4).toUpperCase(); // I primi 2 byte sono il Company ID
-            rawHex = raw.substring(4); // Il resto sono i dati veri
+            id = raw.substring(0, 4).toUpperCase();
+            rawHex = raw.substring(4);
         } else if (dev.payload.startsWith("SVC=")) {
             type = "SVC";
             let parts = dev.payload.split("=");
-            id = parts[1].toUpperCase(); // UUID
-            rawHex = parts[2] || ""; // Il resto sono i dati veri
+            id = (parts[1] || "0000").toUpperCase();
+            rawHex = parts[2] || "";
         }
 
-        let byteLen = rawHex.length / 2;
+        // Estrazione dati precedenti (per il diffing)
+        if (dev.prevPayload.startsWith("MFR=")) prevHex = dev.prevPayload.substring(8);
+        else if (dev.prevPayload.startsWith("SVC=")) prevHex = dev.prevPayload.split("=")[2] || "";
 
-        // Generazione della griglia dei byte con gli OFFSET
+        let byteLen = rawHex.length / 2;
         let gridHtml = "";
+
         for (let i = 0; i < byteLen; i++) {
             let byteStr = rawHex.substring(i * 2, i * 2 + 2);
+            let prevByteStr = prevHex.substring(i * 2, i * 2 + 2);
+            let isChanged = (byteStr !== prevByteStr) && (prevHex !== "");
+            
+            // Classe aggiuntiva se il byte è cambiato
+            let valClass = isChanged ? "radar-byte-val changed" : "radar-byte-val";
+
             gridHtml += `
-                <div style="display:flex; flex-direction:column; align-items:center; background:#1e293b; border: 1px solid #334155; border-radius:4px; overflow:hidden;">
-                    <div title="Offset da usare nella regola" style="background:#0f172a; font-size:0.55rem; font-weight:bold; color:#38bdf8; width:100%; text-align:center; padding:2px 0; border-bottom:1px solid #334155;">
-                        ${i}
-                    </div>
-                    <div style="font-size:0.85rem; font-family:monospace; font-weight:bold; color:#e2e8f0; padding:2px 5px;">
-                        ${byteStr}
-                    </div>
+                <div class="radar-byte" onclick="copyRule('${type}', '${id}', ${i})" title="Clicca per copiare regola per OFFSET ${i}">
+                    <div class="radar-byte-header">${i}</div>
+                    <div class="${valClass}">${byteStr}</div>
                 </div>
             `;
         }
 
         return `
-        <div style="border: 1px solid var(--border); padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <div style="border: 1px solid ${pinnedMac === dev.mac ? 'var(--accent)' : 'var(--border)'}; padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
             
-            <div style="display:flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
-                <b style="color: #f8fafc; font-family:monospace; font-size:1.1rem; letter-spacing: 0.05em;">${dev.mac}</b>
+            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
+                <div style="display:flex; align-items: center; gap: 10px;">
+                    <b style="color: #f8fafc; font-family:monospace; font-size:1.1rem; letter-spacing: 0.05em;">${dev.mac}</b>
+                    <button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
+                        ${pinnedMac === dev.mac ? '🔓 Rimuovi Focus' : '🎯 Isola Sensore'}
+                    </button>
+                </div>
                 <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
             </div>
 
@@ -1090,7 +1155,7 @@ function renderScannerList() {
                 <div><span style="color:#4ade80; font-weight:bold; font-size:0.65rem;">LEN:</span> <span style="font-family:monospace;">${byteLen}</span> byte</div>
             </div>
 
-            <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Value Data (Offset → Byte Hex)</div>
+            <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Data (Clicca su un byte per la regola)</div>
             <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
                 ${gridHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
             </div>
