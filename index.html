@@ -150,6 +150,21 @@
         #app-title  { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text); }
         #app-sub    { font-size: 0.62rem; color: var(--muted); font-family: monospace; margin-top: 2px; }
 
+        /* ---- MODAL INFO ---- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(2px); }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: 100%; max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #0f172a; border-radius: 8px 8px 0 0; }
+        .modal-title { font-size: 0.9rem; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; }
+        .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.5rem; line-height: 1; margin: -0.5rem; padding: 0.5rem; }
+        .modal-close:hover { color: var(--danger); }
+        .modal-body { padding: 1.5rem; overflow-y: auto; font-size: 0.85rem; color: #cbd5e1; line-height: 1.6; }
+        .modal-body h3 { font-size: 0.85rem; color: #4ade80; text-transform: uppercase; margin-top: 1.5rem; margin-bottom: 0.5rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem;}
+        .modal-body h3:first-child { margin-top: 0; }
+        .modal-body ul, .modal-body ol { padding-left: 1.5rem; margin-bottom: 1rem; margin-top: 0.5rem;}
+        .modal-body li { margin-bottom: 0.4rem; }
+        .modal-body code { background: #0a1628; padding: 0.15rem 0.3rem; border-radius: 3px; font-family: monospace; color: #60a5fa; border: 1px solid #1e293b; font-size: 0.75rem;}
+
         @media (min-width: 900px) { #log-wrap-mobile { display: none; } .hidden-mobile { display: block !important; } }
         @media (max-width: 899px)  { #log-wrap { display: none !important; } }
     </style>
@@ -158,7 +173,6 @@
 
 <div id="app-shell">
 
-    <!-- SIDEBAR -->
     <div id="sidebar">
         <div id="app-header">
             <div id="app-title">⬡ Smart Hub Controller</div>
@@ -174,7 +188,9 @@
         </div>
 
         <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">📡 Connetti Dispositivo</button>
-        <button id="disconnectBtn" class="btn btn-secondary hidden">✕ Scollega</button>
+        <button id="disconnectBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem;">✕ Scollega</button>
+        
+        <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">ℹ️ Guida Installatore</button>
 
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
@@ -201,7 +217,6 @@
             <p id="resetFeedback" class="hint" style="text-align:center;min-height:1rem;margin-top:0.4rem;"></p>
         </div>
 
-        <!-- Log desktop -->
         <div id="log-wrap" class="hidden-mobile" style="margin-top:1rem;">
             <div id="log-hdr-desk" class="log-hdr">
                 <div class="log-toggle-zone" onclick="toggleLog('desk')">
@@ -217,7 +232,6 @@
         </div>
     </div>
 
-    <!-- MAIN -->
     <div id="main-area">
 
         <div id="configSlotsWrapper" class="hidden">
@@ -245,7 +259,6 @@
             <div id="sensorGrid"></div>
         </div>
 
-        <!-- Log mobile -->
         <div id="log-wrap-mobile" style="margin-top:1rem;">
             <div id="log-hdr-mob" class="log-hdr">
                 <div class="log-toggle-zone" onclick="toggleLog('mob')">
@@ -260,6 +273,44 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<div id="infoModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Manuale Installatore</span>
+            <button id="closeModalBtn" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <h3>Introduzione</h3>
+            <p>Questo Hub HVAC è progettato per leggere qualsiasi sensore Bluetooth Low Energy (BLE). L'installatore non ha bisogno di riprogrammare la centralina per i nuovi sensori: utilizza l'App <b>nRF Connect</b> per analizzare i segnali e compila una "Regola di decodifica" nella Web App.</p>
+
+            <h3>1. Sintassi della Regola</h3>
+            <p>La regola istruisce l'Hub sulla posizione esatta dei dati nel pacchetto BLE. È composta da 6 parametri separati da virgola:<br>
+            <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
+
+            <h3>2. Analisi dei Parametri</h3>
+            <ul>
+                <li><b>FONTE:</b> Si determina dal <b>Type</b> del pacchetto letto sull'app. Se il Type è <code>0x16</code> (Service Data), si utilizza <code>SVC</code>. Se il Type è <code>0xFF</code> (Manufacturer Data), si utilizza <code>MFR</code>.</li>
+                <li><b>ID:</b> Con <code>SVC</code>, sono i primi 2 byte <b>invertiti</b> (es. <code>6e 2a</code> diventa <code>2A6E</code>). Con <code>MFR</code>, è il codice azienda (es. <code>0757</code> per ELA).</li>
+                <li><b>OFFSET:</b> Rappresenta il numero di coppie (byte) da saltare partendo da 0. Con la fonte <code>SVC</code> l'Hub ignora in automatico l'ID iniziale; pertanto, se il dato segue immediatamente l'ID, l'offset sarà <code>0</code>.</li>
+                <li><b>LUNGHEZZA:</b> I byte occupati dal dato (spesso <code>1</code> per umidità/batteria o <code>2</code> per temperatura).</li>
+                <li><b>OPERATORE:</b> Definisce la conversione del dato grezzo. Esempi:<br> 
+                    <code>100</code> (divide per 100 per ottenere i decimali)<br>
+                    <code>1</code> (mantiene il dato puro intero)<br>
+                    <code>&1</code> (estrae il bit di stato per rilevamento presenza)<br>
+                    <code>>>1</code> (ignora il primo bit per ottenere il contatore totale del PIR).</li>
+                <li><b>NOME:</b> L'etichetta associata al valore inviato al server MQTT (es. <code>temp</code>, <code>hum</code>, <code>pir_state</code>).</li>
+            </ul>
+
+            <h3>3. Configurazione Rapida</h3>
+            <ol>
+                <li>L'installatore accede alla Web App e inserisce il <b>MAC Address</b> del sensore nel campo dello Slot apposito.</li>
+                <li>Incolla la regola (o più regole separate da <code>;</code>) nel campo "Regola di decodifica".</li>
+                <li>Seleziona <b>SALVA</b> per applicare la configurazione e avviare immediatamente la decodifica locale dei dati.</li>
+            </ol>
+        </div>
     </div>
 </div>
 
@@ -297,6 +348,7 @@ const hubPanel             = document.getElementById('hubPanel');
 const sensorGrid           = document.getElementById('sensorGrid');
 const relayGrid            = document.getElementById('relayGrid');
 const configSlotsContainer = document.getElementById('configSlotsContainer');
+const infoModal            = document.getElementById('infoModal');
 
 // ================================================================
 //  LOG
@@ -329,7 +381,6 @@ function addLog(msg, type='info') {
     const prefix = type==='rx'?'RX < ':type==='tx'?'TX > ':'> ';
     const text   = prefix + msg;
 
-    // Aggiorna anteprima header
     ['log-preview', 'logMobile-preview'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -337,7 +388,6 @@ function addLog(msg, type='info') {
         el.className = 'log-preview' + (cls ? ' ' + cls : '');
     });
 
-    // Inserisce in cima (più recente in alto)
     [logEl, logMobile].forEach(el => {
         if (!el) return;
         const d = document.createElement('div');
@@ -699,12 +749,14 @@ function getConfigSlotUUID(index, type) {
     const padding = index < 10 ? "00000" : "0000";
     return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
 }
+
 function createConfigSlot(index) {
     const div = document.createElement('div');
     div.className = 'config-slot';
     div.innerHTML = `
         <span class="slot-badge">SLOT ${index}</span>
-        <div style="margin-top:0.3rem;">
+        
+        <div style="margin-top:0.3rem; margin-bottom:1rem;">
             <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">MAC Address Sensore</label>
             <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
                 <input type="text" id="mac-address-${index}" placeholder="In attesa..." maxlength="17"
@@ -713,19 +765,46 @@ function createConfigSlot(index) {
             </div>
             <p class="hint">Formato: AA:BB:CC:11:22:33</p>
         </div>
+
+        <div>
+            <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#fbbf24;">Regola di decodifica</label>
+            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                <input type="text" id="rule-data-${index}" placeholder="Es: SVC,2A6E,0,2,100,temp" maxlength="60"
+                    class="input-text" style="flex:1;font-family:monospace;">
+                <button onclick="saveSlotRule(${index})" id="rule-save-btn-${index}" class="btn btn-secondary btn-sm">SALVA</button>
+            </div>
+            <p class="hint">Sintassi: FONTE,ID,OFFSET,LUNGHEZZA,OPERATORE,NOME</p>
+        </div>
     `;
     configSlotsContainer.appendChild(div);
 }
+
 async function readConfigSlotValues(index) {
     const macInput = document.getElementById(`mac-address-${index}`);
+    const ruleInput = document.getElementById(`rule-data-${index}`);
+    
     macInput.placeholder = 'Lettura...';
+    if(ruleInput) ruleInput.placeholder = 'Lettura...';
+
+    // 1. Lettura MAC
     try {
-        const c = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
-        const v = new TextDecoder().decode(await c.readValue());
-        macInput.value = v.length >= 12 ? v.toUpperCase() : '';
+        const cMac = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
+        const vMac = new TextDecoder().decode(await cMac.readValue());
+        macInput.value = vMac.length >= 12 ? vMac.toUpperCase() : '';
         if (!macInput.value) macInput.placeholder = 'Slot Vuoto';
     } catch(e) { macInput.placeholder = 'Errore Lettura'; }
+
+    // 2. Lettura Regola
+    if(ruleInput) {
+        try {
+            const cRule = await activeService.getCharacteristic(getConfigSlotUUID(index, 3));
+            const vRule = new TextDecoder().decode(await cRule.readValue());
+            ruleInput.value = vRule;
+            if (!ruleInput.value) ruleInput.placeholder = 'Nessuna regola impostata';
+        } catch(e) { ruleInput.placeholder = 'Errore Lettura'; }
+    }
 }
+
 window.saveSlotMAC = async function(index) {
     let val = document.getElementById(`mac-address-${index}`).value.trim().toUpperCase();
     if (!/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/.test(val))
@@ -742,6 +821,21 @@ window.saveSlotMAC = async function(index) {
         btn.textContent = '✔ OK'; btn.style.background = '#16a34a';
         setTimeout(() => { btn.className = origClass; btn.textContent = 'SALVA'; btn.style.background = ''; }, 1500);
     } catch(e) { addLog(`Err Slot ${index}: ${e.message}`, 'error'); }
+};
+
+window.saveSlotRule = async function(index) {
+    let val = document.getElementById(`rule-data-${index}`).value.trim();
+    try {
+        const char = await activeService.getCharacteristic(getConfigSlotUUID(index, 3));
+        addLog(`Scrittura Regola Slot ${index}...`, 'tx');
+        await char.writeValue(new TextEncoder().encode(val));
+        addLog(`Regola ${index} salvata`, 'success');
+        
+        const btn = document.getElementById(`rule-save-btn-${index}`);
+        const origClass = btn.className;
+        btn.textContent = '✔ OK'; btn.style.background = '#16a34a';
+        setTimeout(() => { btn.className = origClass; btn.textContent = 'SALVA'; btn.style.background = ''; }, 1500);
+    } catch(e) { addLog(`Err Regola ${index}: ${e.message}`, 'error'); }
 };
 
 // ================================================================
@@ -798,7 +892,7 @@ async function performReset() {
 }
 
 // ================================================================
-//  EVENTI
+//  EVENTI & MODAL INFO
 // ================================================================
 connectBtn.addEventListener('click', connect);
 disconnectBtn.addEventListener('click', () => {
@@ -812,6 +906,19 @@ disconnectBtn.addEventListener('click', () => {
 document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
 document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
+
+// Apertura/Chiusura pannello Info
+document.getElementById('infoBtn').addEventListener('click', () => {
+    infoModal.classList.add('open');
+});
+document.getElementById('closeModalBtn').addEventListener('click', () => {
+    infoModal.classList.remove('open');
+});
+infoModal.addEventListener('click', (e) => {
+    if (e.target === infoModal) {
+        infoModal.classList.remove('open');
+    }
+});
 
 // ================================================================
 //  INIT
