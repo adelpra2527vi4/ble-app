@@ -279,42 +279,49 @@
 <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <span class="modal-title">Manuale Installatore</span>
+            <span class="modal-title">Manuale Installatore (Motore V3.0)</span>
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
             <h3>Introduzione</h3>
-            <p>Questo Hub HVAC è progettato per leggere qualsiasi sensore Bluetooth Low Energy (BLE). L'installatore non ha bisogno di riprogrammare la centralina per i nuovi sensori: utilizza l'App <b>nRF Connect</b> per analizzare i segnali e compila una "Regola di decodifica" nella Web App.</p>
+            <p>Questo Hub HVAC è progettato per leggere qualsiasi sensore Bluetooth Low Energy (BLE). L'installatore utilizza l'App <b>nRF Connect</b> per analizzare i segnali e compila una "Regola di decodifica" nella Web App.</p>
 
             <h3>1. Sintassi della Regola</h3>
             <p>La regola istruisce l'Hub sulla posizione esatta dei dati nel pacchetto BLE. È composta da 6 parametri separati da virgola:<br>
             <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
+            <p><i>Nota: Puoi inserire più regole nello stesso slot separandole con un punto e virgola ( <b>;</b> ).</i></p>
 
             <h3>2. Analisi dei Parametri</h3>
             <ul>
-                <li><b>FONTE:</b> Si determina dal <b>Type</b> del pacchetto letto sull'app. Se il Type è <code>0x16</code> (Service Data), si utilizza <code>SVC</code>. Se il Type è <code>0xFF</code> (Manufacturer Data), si utilizza <code>MFR</code>.</li>
+                <li><b>FONTE:</b> Si determina dal <b>Type</b> del pacchetto sull'app. Type <code>0x16</code> = <code>SVC</code>. Type <code>0xFF</code> = <code>MFR</code>.</li>
                 <li><b>ID:</b> Con <code>SVC</code>, sono i primi 2 byte <b>invertiti</b> (es. <code>6e 2a</code> diventa <code>2A6E</code>). Con <code>MFR</code>, è il codice azienda (es. <code>0757</code> per ELA).</li>
-                <li><b>OFFSET:</b> Rappresenta il numero di coppie (byte) da saltare partendo da 0. Con la fonte <code>SVC</code> l'Hub ignora in automatico l'ID iniziale; pertanto, se il dato segue immediatamente l'ID, l'offset sarà <code>0</code>.</li>
-                <li><b>LUNGHEZZA:</b> I byte occupati dal dato (spesso <code>1</code> per umidità/batteria o <code>2</code> per temperatura).</li>
-                <li><b>OPERATORE:</b> Definisce la conversione del dato grezzo. Esempi:<br> 
-                    <code>100</code> (divide per 100 per ottenere i decimali)<br>
-                    <code>1</code> (mantiene il dato puro intero)<br>
-                    <code>&1</code> (estrae il bit di stato per rilevamento presenza)<br>
-                    <code>>>1</code> (ignora il primo bit per ottenere il contatore totale del PIR).</li>
-                <li><b>NOME:</b> L'etichetta associata al valore inviato al server MQTT (es. <code>temp</code>, <code>hum</code>, <code>pir_state</code>).</li>
+                <li><b>OFFSET:</b> Numero di coppie (byte) da saltare partendo da 0. Con <code>SVC</code> l'Hub ignora l'ID iniziale (offset base = 0).</li>
+                <li><b>LUNGHEZZA:</b> I byte occupati dal dato (da 1 a 4).</li>
+                <li><b>OPERATORE (Potenziato):</b> Definisce la conversione del dato. Puoi combinare prefissi speciali:
+                    <ul style="margin-top:0.3rem; margin-bottom:0.3rem; color:#94a3b8;">
+                        <li><b>S</b> = Signed (Abilita i numeri negativi per temperature sotto zero).</li>
+                        <li><b>B</b> = Big-Endian (Inverte la lettura per sensori come RuuviTag).</li>
+                    </ul>
+                    <i>Esempi:</i><br> 
+                    <code>100</code> (divide per 100 per i decimali)<br>
+                    <code>S100</code> (divide per 100, leggendo anche i numeri negativi)<br>
+                    <code>BS10</code> (Big-Endian, negativi abilitati, divide per 10)<br>
+                    <code>&1</code> (estrae l'ultimo bit di stato per rilevamento porte/PIR)<br>
+                    <code>>>1</code> (ignora l'ultimo bit per leggere un contatore rilevamenti)<br>
+                    <code>%1000</code> (estrae il Resto della divisione, es. per i sensori Govee)
+                </li>
+                <li><b>NOME:</b> L'etichetta del valore (es. <code>temp</code>, <code>hum</code>, <code>pir</code>).</li>
             </ul>
 
-            <h3>3. Configurazione Rapida</h3>
-            <ol>
-                <li>L'installatore accede alla Web App e inserisce il <b>MAC Address</b> del sensore nel campo dello Slot apposito.</li>
-                <li>Incolla la regola (o più regole separate da <code>;</code>) nel campo "Regola di decodifica".</li>
-                <li>Seleziona <b>SALVA</b> per applicare la configurazione e avviare immediatamente la decodifica locale dei dati.</li>
-            </ol>
+            <h3>3. Esempi Rapidi</h3>
+            <p>
+                <b>Sensore ELA (Temp. negativa):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
+                <b>Xiaomi (Temp e Hum):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code><br>
+                <b>Sensore Govee (Fusione dati):</b> <code>MFR,EC88,3,3,10000,temp;MFR,EC88,3,3,%1000,hum</code>
+            </p>
         </div>
     </div>
 </div>
-
-<script>
 // ================================================================
 //  UUID
 // ================================================================
@@ -769,11 +776,11 @@ function createConfigSlot(index) {
         <div>
             <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#fbbf24;">Regola di decodifica</label>
             <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-                <input type="text" id="rule-data-${index}" placeholder="Es: SVC,2A6E,0,2,100,temp" maxlength="60"
+                <input type="text" id="rule-data-${index}" placeholder="Es: SVC,181A,6,2,S100,temp" maxlength="100"
                     class="input-text" style="flex:1;font-family:monospace;">
                 <button onclick="saveSlotRule(${index})" id="rule-save-btn-${index}" class="btn btn-secondary btn-sm">SALVA</button>
             </div>
-            <p class="hint">Sintassi: FONTE,ID,OFFSET,LUNGHEZZA,OPERATORE,NOME</p>
+            <p class="hint">Sintassi: FONTE,ID,OFFSET,LUNG,OPERATORE,NOME (usa prefissi S, B, %)</p>
         </div>
     `;
     configSlotsContainer.appendChild(div);
