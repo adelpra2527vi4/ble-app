@@ -375,7 +375,7 @@ String parseBeaconPayload(BLEAdvertisedDevice& dev, String rules) {
             String opStr    = rule.substring(p4 + 1, p5); 
             String label    = rule.substring(p5 + 1);
             
-            String payload = "";
+            std::string payload;
             if (source == "MFR" && dev.haveManufacturerData()) {
                 payload = dev.getManufacturerData();
             } else if (source == "SVC" && dev.haveServiceData()) {
@@ -390,7 +390,7 @@ String parseBeaconPayload(BLEAdvertisedDevice& dev, String rules) {
                 }
             }
             
-            if (payload.length() > 0 && payload.length() >= offset + len) {
+            if (!payload.empty() && payload.size() >= (size_t)(offset + len)) {
                 bool isBigEndian = false;
                 bool isSigned = false;
                 if (opStr.startsWith("B")) { isBigEndian = true; opStr.remove(0, 1); }
@@ -459,21 +459,21 @@ class SnifferCallbacks: public BLEAdvertisedDeviceCallbacks {
 
         // Cattura i Manufacturer Data (MFR)
         if (dev.haveManufacturerData()) {
-            String md = dev.getManufacturerData(); // CORRETTO QUI: Da std::string a String
+            std::string md = dev.getManufacturerData();
             dataStr = "MFR=";
-            for (int i = 0; i < md.length(); i++) {
+            for (size_t i = 0; i < md.size(); i++) {
                 char hex[3]; sprintf(hex, "%02X", (uint8_t)md[i]); dataStr += hex;
             }
         } 
         // Oppure cattura i Service Data (SVC)
         else if (dev.haveServiceData()) {
-            int count = dev.getServiceDataCount();
+                int count = dev.getServiceDataCount();
             if (count > 0) {
                 BLEUUID uuid = dev.getServiceDataUUID(0);
-                String sd = dev.getServiceData(0); // CORRETTO QUI: Da std::string a String
+                std::string sd = dev.getServiceData(0);
                 // Estrae i 4 caratteri centrali dell'UUID (es. 2a6e)
                 dataStr = "SVC=" + String(uuid.toString().c_str()).substring(4,8) + "=";
-                for (int i = 0; i < sd.length(); i++) {
+                for (size_t i = 0; i < sd.size(); i++) {
                     char hex[3]; sprintf(hex, "%02X", (uint8_t)sd[i]); dataStr += hex;
                 }
             }
