@@ -1223,7 +1223,7 @@ function parseSnifferPayload(payload) {
     let rawHex = '';
     const records = [];
 
-    expandedTokens.forEach(token => {
+    rawTokens.forEach(token => {
         const upperToken = token.toUpperCase();
 
         if (upperToken.startsWith('MFR=')) {
@@ -1242,6 +1242,8 @@ function parseSnifferPayload(payload) {
         if (upperToken.startsWith('SVC=')) {
             if (type === 'N/A') type = 'SVC';
 
+            // Supporta vari formati ricevuti dall'hub, ad esempio:
+            // SVC=2A6E=6C0A | SVC=2A6E:6C0A | SVC=2A6E6C0A
             const payloadBody = token.substring(4).trim();
             const parts = payloadBody.split(/[=:,]/).map(p => p.trim()).filter(Boolean);
 
