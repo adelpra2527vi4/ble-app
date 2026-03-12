@@ -470,7 +470,7 @@ class SnifferCallbacks: public BLEAdvertisedDeviceCallbacks {
             for (size_t i = 0; i < md.size(); i++) {
                 char hex[3]; sprintf(hex, "%02X", (uint8_t)md[i]); dataStr += hex;
             }
-        } 
+        }
         // Oppure cattura i Service Data (SVC)
         else if (dev.haveServiceData()) {
                 int count = dev.getServiceDataCount();
