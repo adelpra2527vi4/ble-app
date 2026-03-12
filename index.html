@@ -381,6 +381,26 @@
     </div>
 </div>
 
+<div id="ruleModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <span class="modal-title" style="color: #38bdf8;">🎯 Regola Estratta</span>
+            <button id="closeRuleModalBtn" class="modal-close">×</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem;">
+                Ecco la regola base calcolata per questo byte. Ricordati di cambiare <b>dato_nuovo</b> con il nome che preferisci (es. <i>temp</i>, <i>lux</i>) e di sistemare la lunghezza se serve.
+            </p>
+            
+            <div id="generatedRuleText" style="background: #020617; padding: 12px; border-radius: 6px; border: 1px dashed #38bdf8; font-family: monospace; font-size: 1.1rem; color: #4ade80; margin-bottom: 1.5rem; word-wrap: break-word;">
+                --
+            </div>
+            
+            <button id="execCopyBtn" class="btn btn-primary" style="width: 100%; font-size: 0.9rem; padding: 0.8rem;">📋 Copia nella Clipboard</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // ================================================================
 //  UUID E VARIABILI GLOBALI
@@ -1128,14 +1148,24 @@ window.togglePin = function(mac) {
     renderScannerList();
 };
 
+
+// Variabile per tenere in memoria la regola attuale
+let currentGeneratedRule = "";
+
 // Funzione globale per generare e copiare la regola
 window.copyRule = function(type, id, offset) {
-    const rule = `${type},${id},${offset},1,1,dato_nuovo`;
-    navigator.clipboard.writeText(rule).then(() => {
-        alert(`🎯 Regola Base copiata!\n\n${rule}\n\nIncollala nello slot e modificala (es. cambia 'dato_nuovo' in 'temp' e adatta la lunghezza).`);
-    }).catch(err => {
-        alert("Errore nella copia: " + err);
-    });
+    currentGeneratedRule = `${type},${id},${offset},1,1,dato_nuovo`;
+    
+    // Scrive la regola nel riquadro
+    document.getElementById('generatedRuleText').textContent = currentGeneratedRule;
+    
+    // Resetta l'aspetto del bottone di copia
+    const copyBtn = document.getElementById('execCopyBtn');
+    copyBtn.innerHTML = "📋 Copia nella Clipboard";
+    copyBtn.style.background = "var(--accent)";
+    
+    // Apre il modal
+    document.getElementById('ruleModal').classList.add('open');
 };
 
 function renderScannerList() {
@@ -1267,6 +1297,29 @@ document.getElementById('btn-search-mac').addEventListener('click', applyMacSear
 document.getElementById('btn-clear-search-mac').addEventListener('click', clearMacSearch);
 document.getElementById('scanner-mac-search').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') applyMacSearch();
+});
+
+// Esecuzione copia negli appunti
+document.getElementById('execCopyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(currentGeneratedRule).then(() => {
+        const btn = document.getElementById('execCopyBtn');
+        btn.innerHTML = "✔ Regola Copiata!";
+        btn.style.background = "var(--success)"; // Diventa verde per dare feedback
+        
+        // Chiude automaticamente il popup dopo 1 secondo
+        setTimeout(() => {
+            document.getElementById('ruleModal').classList.remove('open');
+        }, 1000);
+    }).catch(err => {
+        alert("Errore nella copia: " + err);
+    });
+});
+
+// Apertura/Chiusura Rule Modal
+const ruleModal = document.getElementById('ruleModal');
+document.getElementById('closeRuleModalBtn').addEventListener('click', () => ruleModal.classList.remove('open'));
+ruleModal.addEventListener('click', (e) => { 
+    if (e.target === ruleModal) ruleModal.classList.remove('open'); 
 });
 
 // ================================================================
