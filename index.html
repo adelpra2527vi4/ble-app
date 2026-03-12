@@ -1214,7 +1214,10 @@ function handleSnifferData(event) {
 
 function parseSnifferPayload(payload) {
     const metadataKeys = new Set(['mac', 'fonte', 'source', 'src', 'id']);
-    const rawTokens = payload.split(';').map(t => t.trim()).filter(Boolean);
+    const normalizedPayload = payload.replace(/[\r\n]+/g, ';');
+    const rawTokens = normalizedPayload.split(/[;|]/).map(t => t.trim()).filter(Boolean);
+    const expandedTokens = rawTokens.flatMap(token => token.split(/(?=(?:MFR|SVC)=)/i).map(t => t.trim()).filter(Boolean));
+
     let type = 'N/A';
     let id = '0000';
     let rawHex = '';
