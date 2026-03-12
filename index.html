@@ -1252,12 +1252,15 @@ function renderScannerList() {
         <div style="border: 1px solid ${pinnedMac === dev.mac ? 'var(--accent)' : 'var(--border)'}; padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
             
             <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
-                <div style="display:flex; align-items: center; gap: 10px;">
-                    <b style="color: #f8fafc; font-family:monospace; font-size:1.1rem; letter-spacing: 0.05em;">${dev.mac}</b>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-family:monospace; font-size:0.9rem; color:var(--text);">${dev.mac}</span>
+                    <span class="status-badge" style="background:#334155;">${type}</span>
+                    
                     <button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
-                        ${pinnedMac === dev.mac ? '🔓 Rimuovi Focus' : '🎯 Isola Sensore'}
+                        ${pinnedMac === dev.mac ? 'Mostra Tutti' : '📌 Isola Sensore'}
                     </button>
-                    <button onclick="copyMac(this, '${mac}')" class="btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 5px; background: var(--panel); border: 1px solid var(--border);">📋 Copia MAC</button>
+                    
+                    <button onclick="event.stopPropagation(); copyMac(this, '${dev.mac}')" class="btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 5px; background: var(--panel); border: 1px solid var(--border);">📋 Copia MAC</button>
                 </div>
                 <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
             </div>
