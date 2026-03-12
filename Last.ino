@@ -383,7 +383,7 @@ String parseBeaconPayload(BLEAdvertisedDevice& dev, String rules) {
             
             std::string payload;
             if (source == "MFR" && dev.haveManufacturerData()) {
-                payload = dev.getManufacturerData();
+                payload = toStdStringRaw(dev.getManufacturerData());
             } else if (source == "SVC" && dev.haveServiceData()) {
                 uint16_t uuid16 = (uint16_t) strtol(targetId.c_str(), NULL, 16);
                 BLEUUID targetUUID(uuid16);
@@ -465,7 +465,7 @@ class SnifferCallbacks: public BLEAdvertisedDeviceCallbacks {
 
         // Cattura i Manufacturer Data (MFR)
         if (dev.haveManufacturerData()) {
-            std::string md = dev.getManufacturerData();
+            std::string md = toStdStringRaw(dev.getManufacturerData());
             dataStr = "MFR=";
             for (size_t i = 0; i < md.size(); i++) {
                 char hex[3]; sprintf(hex, "%02X", (uint8_t)md[i]); dataStr += hex;
@@ -476,7 +476,7 @@ class SnifferCallbacks: public BLEAdvertisedDeviceCallbacks {
                 int count = dev.getServiceDataCount();
             if (count > 0) {
                 BLEUUID uuid = dev.getServiceDataUUID(0);
-                std::string sd = dev.getServiceData(0);
+                std::string sd = toStdStringRaw(dev.getServiceData(0));
                 // Estrae i 4 caratteri centrali dell'UUID (es. 2a6e)
                 dataStr = "SVC=" + String(uuid.toString().c_str()).substring(4,8) + "=";
                 for (size_t i = 0; i < sd.size(); i++) {
