@@ -367,6 +367,12 @@
             <p style="margin-bottom: 1rem; color: var(--muted);">Usa questo strumento per intercettare i sensori sconosciuti. Avvia lo scanner e muovi il sensore (o coprilo) per vedere quale payload cambia!</p>
             
             <button id="btn-toggle-scanner" class="btn" style="width: 100%; margin-bottom: 15px; background: var(--accent); color: white; text-align: center;">▶ Avvia Scansione Etere</button>
+
+            <div style="display:flex; gap:8px; margin-bottom: 15px;">
+                <input id="scanner-mac-search" type="text" placeholder="Cerca MAC (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
+                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>🔎 Cerca MAC</button>
+                <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>✖ Reset</button>
+            </div>
             
             <div id="scanner-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                 <div style="text-align: center; color: var(--muted); padding: 20px;">Nessun dato. Avvia lo scanner.</div>
@@ -400,6 +406,8 @@ let relayCharacteristics=[];
 let snifferCharacteristic = null;
 let isScanning = false;
 let scannedDevices = {};
+let macSearchQuery = "";
+let scannerToggleInFlight = false;
 
 // ================================================================
 //  DOM REFS
@@ -1010,38 +1018,77 @@ async function performReset() {
 // ================================================================
 let pinnedMac = null; // Memorizza il MAC isolato
 
+function setScannerUiState(scanning) {
+    const btn = document.getElementById('btn-toggle-scanner');
+    const badge = document.getElementById('live-badge');
+
+    btn.innerHTML = scanning ? "⏹ Ferma Scansione" : "▶ Avvia Scansione Etere";
+    btn.style.background = scanning ? "var(--danger)" : "var(--accent)";
+    badge.innerHTML = scanning ? "LIVE" : "OFF";
+    badge.style.background = scanning ? "var(--danger)" : "#64748b";
+}
+
+function renderScannerControls() {
+    const searchInput = document.getElementById('scanner-mac-search');
+    const searchBtn = document.getElementById('btn-search-mac');
+    const clearBtn = document.getElementById('btn-clear-search-mac');
+    const controlsEnabled = !isScanning;
+
+    searchInput.disabled = !controlsEnabled;
+    searchBtn.disabled = !controlsEnabled;
+    clearBtn.disabled = !controlsEnabled;
+    searchInput.placeholder = controlsEnabled
+        ? "Cerca MAC (intero o parziale)"
+        : "Ferma la scansione per filtrare";
+}
+
+function applyMacSearch() {
+    const searchInput = document.getElementById('scanner-mac-search');
+    macSearchQuery = searchInput.value.trim().toUpperCase();
+    renderScannerList();
+}
+
+function clearMacSearch() {
+    const searchInput = document.getElementById('scanner-mac-search');
+    searchInput.value = "";
+    macSearchQuery = "";
+    renderScannerList();
+}
+
 async function toggleScanner() {
     if (!snifferCharacteristic) {
         alert("Devi connetterti all'Hub (Modalità Configurazione) per usare lo scanner!");
         return;
     }
-    const btn = document.getElementById('btn-toggle-scanner');
-    const badge = document.getElementById('live-badge');
+    if (scannerToggleInFlight) return;
+    scannerToggleInFlight = true;
     
     if (!isScanning) {
         scannedDevices = {}; 
         pinnedMac = null; // Resetta il focus
+        clearMacSearch();
         renderScannerList();
         try {
             await snifferCharacteristic.writeValue(new TextEncoder().encode("1"));
             isScanning = true;
-            btn.innerHTML = "⏹ Ferma Scansione";
-            btn.style.background = "var(--danger)";
-            badge.innerHTML = "LIVE";
-            badge.style.background = "var(--danger)";
+            setScannerUiState(true);
             addLog("Scanner BLE avviato", "tx");
         } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
     } else {
+        isScanning = false;
+        setScannerUiState(false);
         try {
             await snifferCharacteristic.writeValue(new TextEncoder().encode("0"));
-            isScanning = false;
-            btn.innerHTML = "▶ Avvia Scansione Etere";
-            btn.style.background = "var(--accent)";
-            badge.innerHTML = "OFF";
-            badge.style.background = "#64748b";
             addLog("Scanner BLE fermato", "tx");
-        } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
+        } catch(e) {
+            isScanning = true;
+            setScannerUiState(true);
+            addLog("Errore scanner: " + e.message, "error");
+        }
     }
+
+    renderScannerControls();
+    scannerToggleInFlight = false;
 }
 
 function handleSnifferData(event) {
@@ -1092,8 +1139,12 @@ function renderScannerList() {
         devices.sort((a, b) => b.rssi - a.rssi); // Più vicini prima
     }
 
+    if (macSearchQuery) {
+        devices = devices.filter(d => d.mac.toUpperCase().includes(macSearchQuery));
+    }
+
     if (devices.length === 0) {
-        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">In attesa di segnali... 📡</div>`;
+        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">${macSearchQuery ? 'Nessun MAC trovato con il filtro inserito.' : 'In attesa di segnali... 📡'}</div>`;
         return;
     }
 
@@ -1202,11 +1253,18 @@ scannerModal.addEventListener('click', async (e) => {
     } 
 });
 document.getElementById('btn-toggle-scanner').addEventListener('click', toggleScanner);
+document.getElementById('btn-search-mac').addEventListener('click', applyMacSearch);
+document.getElementById('btn-clear-search-mac').addEventListener('click', clearMacSearch);
+document.getElementById('scanner-mac-search').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') applyMacSearch();
+});
 
 // ================================================================
 //  INIT
 // ================================================================
 checkBleSupport();
+setScannerUiState(false);
+renderScannerControls();
 </script>
 </body>
 </html>
