@@ -1,6 +1,5 @@
-const CACHE_NAME = 'ble-sniffer-v0';
+const CACHE_NAME = 'ble-sniffer-v1';
 
-// Opzionale: puoi elencare i file da salvare in cache per l'uso offline
 const urlsToCache = [
   './',
   './index.html',
@@ -8,15 +7,40 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then(keys => Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      )),
+      self.clients.claim()
+    ])
   );
 });
 
 self.addEventListener('fetch', event => {
+  const { request } = event;
+
+  if (request.mode === 'navigate' || request.url.endsWith('/index.html')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', cloned));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    caches.match(request).then(response => response || fetch(request))
   );
 });
