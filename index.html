@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hub Controller</title>
+    <title>Terminal Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
@@ -195,11 +195,16 @@
 <body>
 
 <div id="app-shell">
-
-    <div id="sidebar">
+	
+	<div id="sidebar">				  
         <div id="app-header">
-            <div id="app-title">⬡ Smart Hub Controller</div>
-            <div id="app-sub">Universal Beacon Manager</div>
+            <div id="app-title" style="display: flex; align-items: center; gap: 0.3rem;">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
+			</svg>
+			Terminal controller
+		</div>
+            
         </div>
 
         <div id="ble-alert"></div>
@@ -210,12 +215,12 @@
             <span id="modeText" style="font-size:0.65rem;color:var(--muted);font-family:monospace;margin-left:auto;">--</span>
         </div>
 
-        <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">📡 Connetti Dispositivo</button>
-        <button id="disconnectBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem;">✕ Scollega</button>
+        <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">Connetti Dispositivo</button>
+        <button id="disconnectBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem;">Disconnetti</button>
         
-        <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">ℹ️ Guida Installatore</button>
+        <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">Manuale</button>
         
-        <button id="scannerBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">📡 Sniffer BLE</button>
+        <button id="scannerBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">Sniffer BLE</button>
 
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
@@ -238,7 +243,7 @@
 
         <div id="dangerPanel" class="panel hidden" style="border-color:#7f1d1d;">
             <div class="panel-title" style="color:#f87171;">Zona Pericolosa</div>
-            <button id="resetBtn" class="btn btn-danger">⚠ Factory Reset</button>
+            <button id="resetBtn" class="btn btn-danger">Factory Reset</button>
             <p id="resetFeedback" class="hint" style="text-align:center;min-height:1rem;margin-top:0.4rem;"></p>
         </div>
 
@@ -277,7 +282,7 @@
             </div>
 
             <div class="panel">
-                <div class="panel-title">⚡ Controllo Relè</div>
+                <div class="panel-title">Controllo Relè</div>
                 <div id="relayGrid"></div>
             </div>
 
@@ -304,51 +309,74 @@
 <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <span class="modal-title">Manuale Installatore (Motore V3.0)</span>
+            <span class="modal-title">Manuale di installazione</span>
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
             <h3>Introduzione</h3>
-            <p>Questo Hub è pensato per catturare al volo i segnali dei sensori Bluetooth (BLE) ed estrarne i dati grezzi. Di solito, ci si arma di un'app come <b>nRF Connect</b> per "annusare" i pacchetti radio e poi si compila una "Regola di decodifica" nella Web App, usandola come un vero e proprio bisturi digitale.</p>
+            <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
+			<br>
+			<p>Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <b>Sniffer integrato</b>.</p>
 
-            <h3>1. La Sintassi: Il Bisturi</h3>
-            <p>La regola serve a spiegare all'Hub dove pescare esattamente i dati nel pacchetto. Si compone di 6 parametri separati da virgola:<br>
-            <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
-            <p><i>Nota: si possono inserire più regole nello stesso slot separandole semplicemente con un punto e virgola ( <b>;</b> ).</i></p>
-
-            <h3>2. I Parametri al volo</h3>
+            <h3>1. Accesso alla Modalità Configurazione</h3>
             <ul>
-                <li><b>FONTE:</b> Dove cercare. <code>SVC</code> (Service Data, Type 0x16) oppure <code>MFR</code> (Manufacturer Data, Type 0xFF).</li>
-                <li><b>ID:</b> L'identificativo. Nel caso di <code>SVC</code>, sono i primi 2 byte invertiti (es. <code>6e2a</code> diventa <code>2A6E</code>). Con <code>MFR</code> è il codice dell'azienda. <b>💡 Il trucco:</b> se l'ID è sconosciuto, basta mettere <code>0</code> per dare in pasto all'Hub l'intero pacchetto!</li>
-                <li><b>OFFSET:</b> Quanti byte (coppie di caratteri) saltare partendo dall'inizio per centrare il valore desiderato.</li>
-                <li><b>LUNGHEZZA:</b> I byte occupati dal dato (da 1 a 4).</li>
-                <li><b>OPERATORE:</b> Come tradurre il numero in un dato leggibile.
+                <li>È necessario mantenere premuto il pulsante <b>BOOT</b> posto sull'Hub finché l'indicatore LED non assume una colorazione <b>BIANCA</b>.</li>
+                <li>Al rilascio del pulsante, il LED inizierà a <b>lampeggiare in BLU</b>, indicando che il dispositivo è disponibile ad essere connesso.</li>
+                <li>Selezionare la funzione <b>Connetti Dispositivo</b> per comunicare con il dispositivo</li>
+            </ul>
+
+            <h3>2. Analisi tramite Sniffer Integrato</h3>
+            <p>L'utilizzo dello <b>Sniffer BLE</b> consente di intercettare e analizzare i pacchetti dati dei sensori circostanti in tempo reale.</p>
+			<br>
+			<p>Sono presenti i seguenti pulsanti e funzioni:</p>
+            <ul>
+                <li><b>Isola Sensore:</b> Funzione che nasconde gli altri dispositivi dal traffico di rete per monitorare un singolo dispositivo, particolarmente utile in ambienti con elevata saturazione di segnale.</li>
+                <li><b>Copia MAC:</b> Permette l'acquisizione rapida dell'indirizzo fisico del dispositivo.</li>
+                <li><b>Evidenziazione dei Dati Dinamici:</b> All'interno del Payload, i byte che presentano una colorazione <b style="color: #ef4444;">rossa</b> temporanea <b>non indicano un errore</b>. Tale colorazione evidenzia le variazioni di valore in tempo reale. Stimolando fisicamente il sensore, l'installatore può individuare i byte dinamici (es. temperatura) distinguendoli dalle intestazioni statiche.</li>
+                <li><b>Generazione Automatica della Regola:</b> Selezionando un byte specifico all'interno del Payload, il sistema provvederà a calcolare automaticamente il parametro di Offset, compilando la relativa regola di decodifica.</li>
+            </ul>
+
+            <h3>3. Struttura e Sintassi della Regola</h3>
+            <p>La regola di decodifica istruisce l'Hub sulle coordinate precise per l'estrazione del dato. È composta da 6 parametri separati da virgola:<br>
+            <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
+            <p><i>Nota tecnica: è consentito l'inserimento di regole multiple all'interno del medesimo slot, utilizzando il punto e virgola ( <b>;</b> ) come separatore.</i></p>
+            <ul>
+                <li><b>FONTE:</b> Definisce l'origine del pacchetto. Valori ammessi: <code>SVC</code> (Service Data) oppure <code>MFR</code> (Manufacturer Data).</li>
+                <li><b>ID:</b> Identificativo esadecimale. Nel caso di origine <code>SVC</code>, corrisponde ai primi 2 byte invertiti (es. <code>6e2a</code> si trascrive come <code>2A6E</code>). Nel caso <code>MFR</code>, corrisponde al codice identificativo dell'azienda produttrice. <b>Nota procedurale:</b> in caso di ID non documentato, l'inserimento del valore <code>0</code> consentirà l'elaborazione dell'intero pacchetto da parte dell'Hub.</li>
+                <li><b>OFFSET:</b> Definisce il numero di byte (coppie di caratteri esadecimali) da ignorare a partire dall'inizio del payload per isolare il dato richiesto.</li>
+                <li><b>LUNGHEZZA:</b> Dimensione in byte occupata dal dato (valore compreso tra 1 e 4).</li>
+                <li><b>OPERATORE:</b> Parametro di conversione matematica per l'output finale.
                     <ul style="margin-top:0.3rem; margin-bottom:0.3rem; color:#94a3b8;">
-                        <li><code>100</code> = Divide per 100 (es. 2450 diventa 24.50).</li>
-                        <li><code>S1</code> = Signed (abilita i numeri negativi, fondamentale per i termometri d'inverno).</li>
-                        <li><code>B1</code> = Big-Endian (inverte l'ordine dei byte se il numero sembra totalmente sballato).</li>
-                        <li><code>36</code> = Se il sensore spara un "36" fisso per dire che una porta è aperta, dividendo per 36 si ottiene un comodissimo "1" (acceso/spento).</li>
+                        <li><code>100</code> = Effettua una divisione per 100 (es. il valore 2450 viene restituito come 24.50).</li>
+                        <li><code>S1</code> = Signed (abilita l'elaborazione dei numeri negativi).</li>
+                        <li><code>B1</code> = Big-Endian (inverte l'ordine dei byte per correggere discrepanze di lettura).</li>
+                        <li><code>36</code> = Esempio pratico: qualora il sensore trasmetta un valore fisso pari a "36" per segnalare l'apertura di un contatto, la divisione per 36 restituirà il valore binario "1" (stato logico alto).</li>
                     </ul>
                 </li>
-                <li><b>NOME:</b> L'etichetta finale da mostrare (es. <code>temp</code>, <code>lux</code>, <code>pir</code>).</li>
+                <li><b>NOME:</b> Etichetta di destinazione per la visualizzazione dell'output (es. <code>temp</code>, <code>lux</code>, <code>pir</code>).</li>
             </ul>
 
-            <h3>3. 🕵️‍♂️ La "Scanner Mode" (Per sensori sconosciuti)</h3>
-            <p>Quando non si ha la più pallida idea di dove siano nascosti i dati, si può creare una regola "Scanner" per stampare a schermo i byte puri e guardarli in diretta:</p>
-            <code>MFR,0,8,1,1,b8; MFR,0,9,1,1,b9; MFR,0,10,1,1,b10; MFR,0,11,1,1,b11</code>
-            <p>A questo punto, basta guardare la Web App e "stimolare" il sensore (coprendolo, scaldandolo o muovendo il magnete). Il valore "b" che cambia all'istante indica l'OFFSET giusto!</p>
+            <h3>4. Inserimento e Memorizzazione</h3>
+            <p>Una volta isolato l'indirizzo MAC e generata la relativa Regola tramite lo Scanner, l'installatore dovrà riportare tali valori negli appositi campi della sezione <b>Dispositivi</b>. È essenziale abilitare l'interruttore del dispositivo prima di selezionare <b>Salva nel Dispositivo</b>. Tale procedura va ripetuta per ciascun nodo della rete.</p>
 
-            <h3>4. ⚠ Le trappole classiche</h3>
+            <h3>5. Attivazione della Modalità Operativa</h3>
             <ul>
-                <li><b>Il Finto MAC:</b> Molti sensori infilano il proprio indirizzo MAC dentro ai dati (spesso specchiato). Se spuntano valori altissimi e immobili, probabilmente si sta leggendo il MAC. Soluzione: aumentare l'OFFSET per saltarlo a piè pari.</li>
-                <li><b>Valori "ballerini":</b> Se i numeri saltano ciclicamente senza senso logico, è molto probabile che si stia leggendo un "contatore di pacchetti" interno. Meglio spostare l'OFFSET di un byte.</li>
+                <li>Al termine delle operazioni di configurazione, è necessario mantenere nuovamente premuto il pulsante <b>BOOT</b> sull'Hub.</li>
+                <li>Il dispositivo terminerà la fase di ascolto e avvierà il ciclo di elaborazione autonoma basato sulle regole appena memorizzate.</li>
+                <li>L'operatore ha la facoltà di ristabilire la connessione tramite l'interfaccia web per monitorare in tempo reale il flusso dei dati decodificati.</li>
             </ul>
 
-            <h3>5. Esempi Pronti</h3>
+            <h3>Casistiche Particolari</h3>
+            <ul>
+                <li><b>Indirizzo MAC Integrato:</b> Molti sensori includono il proprio indirizzo MAC all'interno del payload. Qualora si rilevino valori estremamente elevati e privi di variazione, è probabile che si stia leggendo l'indirizzo fisico. La risoluzione richiede l'incremento dell'OFFSET per bypassare tale stringa.</li>
+                <li><b>Valori Fluttuanti Incoerenti:</b> Se i dati riportano variazioni cicliche repentine prive di logica ambientale, è altamente probabile che la lettura stia interessando il "contatore di pacchetti" interno al sensore. Si raccomanda di traslare l'OFFSET di un byte.</li>
+            </ul>
+
+            <h3>Esempi di Configurazione Note</h3>
             <p>
-                <b>ELA Temp (con negativi):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
-                <b>Shelly BLU (Lux + Porta):</b> <code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code><br>
-                <b>Xiaomi (Temp + Hum):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code>
+                <b>Sensore ELA Temp (supporto valori negativi):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
+                <b>Sensore Shelly BLU (Luminosità + Stato Contatto):</b> <code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code><br>
+                <b>Sensore Xiaomi (Temperatura + Umidità):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code>
             </p>
         </div>
     </div>
@@ -370,8 +398,8 @@
 
             <div style="display:flex; gap:8px; margin-bottom: 15px;">
                 <input id="scanner-mac-search" type="text" placeholder="Cerca MAC (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
-                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>🔎 Cerca MAC</button>
-                <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>✖ Reset</button>
+                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Cerca MAC</button>
+                <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Reset</button>
             </div>
             
             <div id="scanner-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
@@ -384,7 +412,7 @@
 <div id="ruleModal" class="modal-overlay">
     <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header">
-            <span class="modal-title" style="color: #38bdf8;">🎯 Regola Estratta</span>
+            <span class="modal-title" style="color: #38bdf8;">Regola Estratta</span>
             <button id="closeRuleModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body" style="text-align: center;">
@@ -552,9 +580,10 @@ function updateStatus(state, mode='') {
         mt.textContent = '--';
         mt.style.color = '';
         connectBtn.disabled = false;
-        connectBtn.textContent = '📡 Connetti Dispositivo';
+        connectBtn.textContent = 'Connetti Dispositivo';
         connectBtn.classList.remove('hidden');
         disconnectBtn.classList.add('hidden');
+		document.getElementById('scannerBtn').classList.add('hidden');
         sysPanel.classList.add('hidden');
         dangerPanel.classList.add('hidden');
         configSlotsWrapper.classList.add('hidden');
@@ -618,6 +647,7 @@ async function connect() {
 //  CONFIG MODE
 // ================================================================
 async function setupConfigMode() {
+	document.getElementById('scannerBtn').classList.remove('hidden');
     sysPanel.classList.remove('hidden');
     dangerPanel.classList.remove('hidden');
     configSlotsWrapper.classList.remove('hidden');
@@ -667,6 +697,7 @@ async function setupConfigMode() {
 //  HUB MODE
 // ================================================================
 async function setupHubMode() {
+	document.getElementById('scannerBtn').classList.add('hidden');
     sysPanel.classList.add('hidden');
     dangerPanel.classList.add('hidden');
     configSlotsWrapper.classList.add('hidden');
