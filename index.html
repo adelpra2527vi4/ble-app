@@ -1214,30 +1214,58 @@ function handleSnifferData(event) {
 
 function parseSnifferPayload(payload) {
     const metadataKeys = new Set(['mac', 'fonte', 'source', 'src', 'id']);
-    const rawTokens = payload.split(';').map(t => t.trim()).filter(Boolean);
+    const normalizedPayload = payload.replace(/[\r\n]+/g, ';');
+    const rawTokens = normalizedPayload.split(/[;|]/).map(t => t.trim()).filter(Boolean);
+    const expandedTokens = rawTokens.flatMap(token => token.split(/(?=(?:MFR|SVC)=)/i).map(t => t.trim()).filter(Boolean));
+
     let type = 'N/A';
     let id = '0000';
     let rawHex = '';
+    const records = [];
 
-    rawTokens.forEach(token => {
-        if (token.startsWith('MFR=')) {
+    expandedTokens.forEach(token => {
+        const upperToken = token.toUpperCase();
+
+        if (upperToken.startsWith('MFR=')) {
             const data = token.substring(4).replace(/[^0-9a-f]/gi, '').toUpperCase();
             if (data.length >= 4) {
+                const mfrId = data.substring(0, 4);
+                const mfrData = data.substring(4);
                 if (type === 'N/A') type = 'MFR';
-                if (id === '0000') id = data.substring(0, 4);
-                rawHex += data.substring(4);
+                if (id === '0000') id = mfrId;
+                rawHex += mfrData;
+                records.push({ type: 'MFR', id: mfrId, rawHex: mfrData });
             }
             return;
         }
 
-        if (token.startsWith('SVC=')) {
-            const parts = token.split('=');
-            const svcId = (parts[1] || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
-            const data = parts.slice(2).join('').replace(/[^0-9a-f]/gi, '').toUpperCase();
+        if (upperToken.startsWith('SVC=')) {
+            if (type === 'N/A') type = 'SVC';
+
+            const payloadBody = token.substring(4).trim();
+            const parts = payloadBody.split(/[=:,]/).map(p => p.trim()).filter(Boolean);
+
+            let svcId = '';
+            let data = '';
+
+            if (parts.length >= 2) {
+                svcId = (parts[0] || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+                data = parts.slice(1).join('').replace(/[^0-9a-f]/gi, '').toUpperCase();
+            } else {
+                const compact = payloadBody.replace(/[^0-9a-f]/gi, '').toUpperCase();
+                if (compact.length > 4) {
+                    svcId = compact.substring(0, 4);
+                    data = compact.substring(4);
+                } else {
+                    svcId = compact;
+                    data = '';
+                }
+            }
+
+            if (id === '0000' && svcId) id = svcId.substring(0, 4);
             if (data) {
-                if (type === 'N/A') type = 'SVC';
-                if (id === '0000' && svcId) id = svcId;
                 rawHex += data;
+                records.push({ type: 'SVC', id: (svcId || '0000').substring(0, 4), rawHex: data });
             }
             return;
         }
@@ -1248,10 +1276,15 @@ function parseSnifferPayload(payload) {
             if (metadataKeys.has(key)) return;
             const data = token.substring(eqIdx + 1).replace(/[^0-9a-f]/gi, '').toUpperCase();
             rawHex += data;
+            if (data) records.push({ type: 'RAW', id: key.toUpperCase(), rawHex: data });
         }
     });
 
-    return { type, id, rawHex };
+    if (!records.length && rawHex) {
+        records.push({ type, id, rawHex });
+    }
+
+    return { type, id, rawHex, records };
 }
 
 // Funzione globale per isolare un sensore
@@ -1326,40 +1359,52 @@ function renderScannerList() {
     list.innerHTML = devices.map(dev => {
         const parsedCurrent = parseSnifferPayload(dev.payload);
         const parsedPrev = parseSnifferPayload(dev.prevPayload || "");
-        let type = parsedCurrent.type;
-        let id = parsedCurrent.id;
-        let rawHex = parsedCurrent.rawHex;
-        let prevHex = parsedPrev.rawHex;
+        const currentRecords = parsedCurrent.records || [];
+        const prevRecords = parsedPrev.records || [];
 
-        let byteLen = rawHex.length / 2;
-        let gridHtml = "";
+        if (!dev.changedOffsets || Array.isArray(dev.changedOffsets)) dev.changedOffsets = {};
 
-        // 1. INIZIALIZZA LA MEMORIA STORICA DEI BYTE CAMBIATI PER QUESTO DEVICE
-        if (!dev.changedOffsets) dev.changedOffsets = [];
+        const recordsHtml = currentRecords.map((record, recordIdx) => {
+            const prevRecord = prevRecords[recordIdx] || { rawHex: '' };
+            const type = record.type;
+            const id = record.id;
+            const rawHex = record.rawHex;
+            const prevHex = prevRecord.rawHex || '';
+            const byteLen = rawHex.length / 2;
+            let gridHtml = '';
 
-        for (let i = 0; i < byteLen; i++) {
-            let byteStr = rawHex.substring(i * 2, i * 2 + 2);
-            let prevByteStr = prevHex.substring(i * 2, i * 2 + 2);
-            
-            // Verifica se c'è stata una variazione in QUESTO preciso momento
-            let isChanged = (byteStr !== prevByteStr) && (prevHex !== "");
-            
-            // 2. SE IL BYTE CAMBIA, SALVA IL SUO OFFSET NELLA MEMORIA (se non c'è già)
-            if (isChanged && !dev.changedOffsets.includes(i)) {
-                dev.changedOffsets.push(i);
+            for (let i = 0; i < byteLen; i++) {
+                const byteStr = rawHex.substring(i * 2, i * 2 + 2);
+                const prevByteStr = prevHex.substring(i * 2, i * 2 + 2);
+                const offsetKey = `${recordIdx}:${type}:${id}:${i}`;
+                const isChanged = (byteStr !== prevByteStr) && (prevHex !== '');
+
+                if (isChanged) dev.changedOffsets[offsetKey] = true;
+
+                const hasEverChanged = Boolean(dev.changedOffsets[offsetKey]);
+                const valClass = hasEverChanged ? 'radar-byte-val changed' : 'radar-byte-val';
+
+                gridHtml += `
+                    <div class="radar-byte" onclick="copyRule('${type}', '${id}', ${i})" title="Clicca per copiare regola per OFFSET ${i}">
+                        <div class="radar-byte-header">${i}</div>
+                        <div class="${valClass}">${byteStr}</div>
+                    </div>
+                `;
             }
-            
-            // 3. IL BYTE SARA' ROSSO SE E' NELLA MEMORIA STORICA (è cambiato almeno una volta)
-            let hasEverChanged = dev.changedOffsets.includes(i);
-            let valClass = hasEverChanged ? "radar-byte-val changed" : "radar-byte-val";
 
-            gridHtml += `
-                <div class="radar-byte" onclick="copyRule('${type}', '${id}', ${i})" title="Clicca per copiare regola per OFFSET ${i}">
-                    <div class="radar-byte-header">${i}</div>
-                    <div class="${valClass}">${byteStr}</div>
+            return `
+            <div style="border:1px solid #1e293b; border-radius:6px; padding:8px; margin-bottom:8px; background:#020617;">
+                <div style="display:flex; gap:12px; font-size:0.75rem; margin-bottom: 8px;">
+                    <div><span style="color:#a78bfa; font-weight:bold; font-size:0.65rem;">TYPE:</span> <span style="font-family:monospace;">${type}</span></div>
+                    <div><span style="color:#fbbf24; font-weight:bold; font-size:0.65rem;">ID:</span> <span style="font-family:monospace; color:#fde047;">${id}</span></div>
+                    <div><span style="color:#4ade80; font-weight:bold; font-size:0.65rem;">LEN:</span> <span style="font-family:monospace;">${byteLen}</span> byte</div>
                 </div>
-            `;
-        }
+                <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Data (Clicca su un byte per la regola)</div>
+                <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    ${gridHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
+                </div>
+            </div>`;
+        }).join('');
 
         return `
         <div style="border: 1px solid ${pinnedMac === dev.mac ? 'var(--accent)' : 'var(--border)'}; padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
@@ -1380,16 +1425,7 @@ function renderScannerList() {
                 <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
             </div>
 
-            <div style="display:flex; gap:12px; font-size:0.75rem; margin-bottom: 10px; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b;">
-                <div><span style="color:#a78bfa; font-weight:bold; font-size:0.65rem;">TYPE:</span> <span style="font-family:monospace;">${type}</span></div>
-                <div><span style="color:#fbbf24; font-weight:bold; font-size:0.65rem;">ID:</span> <span style="font-family:monospace; color:#fde047;">${id}</span></div>
-                <div><span style="color:#4ade80; font-weight:bold; font-size:0.65rem;">LEN:</span> <span style="font-family:monospace;">${byteLen}</span> byte</div>
-            </div>
-
-            <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Data (Clicca su un byte per la regola)</div>
-            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
-                ${gridHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
-            </div>
+            ${recordsHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
 
             <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">
                 ⏱ ${dev.time}
