@@ -1122,14 +1122,12 @@ function renderScannerControls() {
     const searchInput = document.getElementById('scanner-mac-search');
     const searchBtn = document.getElementById('btn-search-mac');
     const clearBtn = document.getElementById('btn-clear-search-mac');
-    const controlsEnabled = !isScanning;
-
-    searchInput.disabled = !controlsEnabled;
-    searchBtn.disabled = !controlsEnabled;
-    clearBtn.disabled = !controlsEnabled;
-    searchInput.placeholder = controlsEnabled
-        ? "Cerca MAC (intero o parziale)"
-        : "Ferma la scansione per filtrare";
+    
+    // Rimuoviamo la dipendenza da isScanning per mantenere tutto sempre abilitato
+    searchInput.disabled = false;
+    searchBtn.disabled = false;
+    clearBtn.disabled = false;
+    searchInput.placeholder = "Cerca MAC (intero o parziale)";
 }
 
 function applyMacSearch() {
@@ -1273,8 +1271,8 @@ function renderScannerList() {
     }
 
     if (macSearchQuery) {
-        devices = devices.filter(d => d.mac.toUpperCase().includes(macSearchQuery));
-    }
+	    devices = devices.filter(d => d.mac.toUpperCase().includes(macSearchQuery.toUpperCase()));
+	}
 
     if (devices.length === 0) {
         list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">${macSearchQuery ? 'Nessun MAC trovato con il filtro inserito.' : 'In attesa di segnali...'}</div>`;
