@@ -1168,6 +1168,27 @@ window.copyRule = function(type, id, offset) {
     document.getElementById('ruleModal').classList.add('open');
 };
 
+// Funzione per copiare il MAC Address con feedback visivo sul pulsante
+window.copyMac = function(btnElement, macAddress) {
+    navigator.clipboard.writeText(macAddress).then(() => {
+        // Salviamo l'aspetto originale
+        const originalText = btnElement.innerHTML;
+        const originalBg = btnElement.style.background;
+        
+        // Cambiamo l'aspetto per dare feedback
+        btnElement.innerHTML = "✔ Copiato!";
+        btnElement.style.background = "var(--success)";
+        
+        // Ripristiniamo dopo 1 secondo
+        setTimeout(() => {
+            btnElement.innerHTML = originalText;
+            btnElement.style.background = originalBg;
+        }, 1000);
+    }).catch(err => {
+        console.error("Errore durante la copia del MAC: ", err);
+    });
+};
+
 function renderScannerList() {
     const list = document.getElementById("scanner-list");
     let devices = Object.keys(scannedDevices).map(mac => ({mac, ...scannedDevices[mac]}));
@@ -1236,6 +1257,7 @@ function renderScannerList() {
                     <button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
                         ${pinnedMac === dev.mac ? '🔓 Rimuovi Focus' : '🎯 Isola Sensore'}
                     </button>
+                    <button onclick="copyMac(this, '${mac}')" class="btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 5px; background: var(--panel); border: 1px solid var(--border);">📋 Copia MAC</button>
                 </div>
                 <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
             </div>
