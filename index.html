@@ -190,6 +190,42 @@
 
         @media (min-width: 900px) { #log-wrap-mobile { display: none; } .hidden-mobile { display: block !important; } }
         @media (max-width: 899px)  { #log-wrap { display: none !important; } }
+		
+		/* --- OTTIMIZZAZIONI MOBILE PER MODALI E SNIFFER --- */
+		/* Fa andare a capo la barra di ricerca su schermi piccoli */
+		.scanner-search-row {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 15px;
+			flex-wrap: wrap; /* Permette agli elementi di andare a capo */
+		}
+
+		/* Forza la rottura delle parole lunghe (come i payload esadecimali) per non far sballare la larghezza */
+		#scanner-list {
+			word-break: break-word; 
+			overflow-x: hidden;
+		}
+
+		/* Regolazioni specifiche per smartphone */
+		@media (max-width: 600px) {
+			.scanner-search-row input {
+				width: 100%; /* L'input prende tutta la riga */
+				flex: none !important;
+			}
+			.scanner-search-row button {
+				flex: 1; /* I pulsanti si dividono lo spazio rimanente */
+				padding: 0.6rem;
+			}
+			
+			.modal-body {
+				padding: 1rem !important; /* Riduce i margini interni su schermi piccoli */
+			}
+			
+			.modal-header .modal-title {
+				font-size: 0.8rem; /* Riduce leggermente il titolo */
+			}
+		}
+		
     </style>
 </head>
 <body>
@@ -396,7 +432,7 @@
             
             <button id="btn-toggle-scanner" class="btn" style="width: 100%; margin-bottom: 15px; background: var(--accent); color: white; text-align: center;">▶ Avvia Scansione Etere</button>
 
-            <div style="display:flex; gap:8px; margin-bottom: 15px;">
+            <div class="scanner-search-row">
                 <input id="scanner-mac-search" type="text" placeholder="Cerca MAC (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
                 <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Cerca MAC</button>
                 <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Reset</button>
@@ -1073,7 +1109,7 @@ function setScannerUiState(scanning) {
     const btn = document.getElementById('btn-toggle-scanner');
     const badge = document.getElementById('live-badge');
 
-    btn.innerHTML = scanning ? "⏹ Ferma Scansione" : "▶ Avvia Scansione Etere";
+    btn.innerHTML = scanning ? "■ Ferma Scansione" : "▶ Avvia Scansione Etere";
     btn.style.background = scanning ? "var(--danger)" : "var(--accent)";
     badge.innerHTML = scanning ? "LIVE" : "OFF";
     badge.style.background = scanning ? "var(--danger)" : "#64748b";
