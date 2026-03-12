@@ -1302,13 +1302,6 @@ function renderScannerList() {
         let byteLen = rawHex.length / 2;
         let gridHtml = "";
 
-        // Estrazione dati precedenti (per il diffing)
-        if (dev.prevPayload.startsWith("MFR=")) prevHex = dev.prevPayload.substring(8);
-        else if (dev.prevPayload.startsWith("SVC=")) prevHex = dev.prevPayload.split("=")[2] || "";
-
-        let byteLen = rawHex.length / 2;
-        let gridHtml = "";
-
         // 1. INIZIALIZZA LA MEMORIA STORICA DEI BYTE CAMBIATI PER QUESTO DEVICE
         if (!dev.changedOffsets) dev.changedOffsets = [];
 
