@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <Adafruit_NeoPixel.h>
 #include <initializer_list>
+#include <string>
 
 // --- CONFIGURAZIONE SISTEMA ---
 // --- SENSORI BLE ---
@@ -344,6 +345,11 @@ void handleIncomingMQTT(const String& payload) {
     }
 }
 
+
+static std::string toStdStringRaw(const String& src) {
+    return std::string(src.c_str(), src.length());
+}
+
 // ================================================================
 //  MOTORE DI PARSING DINAMICO
 // ================================================================
@@ -384,7 +390,7 @@ String parseBeaconPayload(BLEAdvertisedDevice& dev, String rules) {
                 int svcCount = dev.getServiceDataCount();
                 for (int i = 0; i < svcCount; i++) {
                     if (dev.getServiceDataUUID(i).equals(targetUUID)) {
-                        payload = dev.getServiceData(i);
+                        payload = toStdStringRaw(dev.getServiceData(i));
                         break; 
                     }
                 }
