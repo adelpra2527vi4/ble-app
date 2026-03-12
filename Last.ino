@@ -346,89 +346,8 @@ void handleIncomingMQTT(const String& payload) {
 }
 
 
-static bool getAdvField(BLEAdvertisedDevice& dev, uint8_t adType, std::string& out) {
-    out.clear();
-    const uint8_t* payload = dev.getPayload();
-    size_t payloadLen = dev.getPayloadLength();
-    size_t i = 0;
-
-    while (i + 1 < payloadLen) {
-        uint8_t fieldLen = payload[i];
-        if (fieldLen == 0) break;
-
-        size_t fieldStart = i + 1;
-        size_t fieldEnd = fieldStart + fieldLen;
-        if (fieldEnd > payloadLen) break;
-
-        uint8_t type = payload[fieldStart];
-        if (type == adType && fieldLen >= 1) {
-            out.assign((const char*)(payload + fieldStart + 1), fieldLen - 1);
-            return true;
-        }
-
-        i = fieldEnd;
-    }
-
-    return false;
-}
-
-static bool getServiceData16Raw(BLEAdvertisedDevice& dev, uint16_t targetUuid, std::string& out) {
-    out.clear();
-    const uint8_t* payload = dev.getPayload();
-    size_t payloadLen = dev.getPayloadLength();
-    size_t i = 0;
-
-    while (i + 1 < payloadLen) {
-        uint8_t fieldLen = payload[i];
-        if (fieldLen == 0) break;
-
-        size_t fieldStart = i + 1;
-        size_t fieldEnd = fieldStart + fieldLen;
-        if (fieldEnd > payloadLen) break;
-
-        uint8_t type = payload[fieldStart];
-        if (type == 0x16 && fieldLen >= 3) {
-            const uint8_t* d = payload + fieldStart + 1;
-            uint16_t uuid = (uint16_t)d[0] | ((uint16_t)d[1] << 8); // little-endian
-            if (uuid == targetUuid) {
-                out.assign((const char*)(d + 2), fieldLen - 3);
-                return true;
-            }
-        }
-
-        i = fieldEnd;
-    }
-
-    return false;
-}
-
-static bool getFirstServiceData16Raw(BLEAdvertisedDevice& dev, uint16_t& uuidOut, std::string& out) {
-    out.clear();
-    uuidOut = 0;
-    const uint8_t* payload = dev.getPayload();
-    size_t payloadLen = dev.getPayloadLength();
-    size_t i = 0;
-
-    while (i + 1 < payloadLen) {
-        uint8_t fieldLen = payload[i];
-        if (fieldLen == 0) break;
-
-        size_t fieldStart = i + 1;
-        size_t fieldEnd = fieldStart + fieldLen;
-        if (fieldEnd > payloadLen) break;
-
-        uint8_t type = payload[fieldStart];
-        if (type == 0x16 && fieldLen >= 3) {
-            const uint8_t* d = payload + fieldStart + 1;
-            uuidOut = (uint16_t)d[0] | ((uint16_t)d[1] << 8); // little-endian
-            out.assign((const char*)(d + 2), fieldLen - 3);
-            return true;
-        }
-
-        i = fieldEnd;
-    }
-
-    return false;
+static std::string toStdStringRaw(const String& src) {
+    return std::string(src.c_str(), src.length());
 }
 
 // ================================================================
@@ -463,11 +382,18 @@ String parseBeaconPayload(BLEAdvertisedDevice& dev, String rules) {
             String label    = rule.substring(p5 + 1);
             
             std::string payload;
-            if (source == "MFR") {
-                getAdvField(dev, 0xFF, payload);
-            } else if (source == "SVC") {
+            if (source == "MFR" && dev.haveManufacturerData()) {
+                payload = dev.getManufacturerData();
+            } else if (source == "SVC" && dev.haveServiceData()) {
                 uint16_t uuid16 = (uint16_t) strtol(targetId.c_str(), NULL, 16);
-                getServiceData16Raw(dev, uuid16, payload);
+                BLEUUID targetUUID(uuid16);
+                int svcCount = dev.getServiceDataCount();
+                for (int i = 0; i < svcCount; i++) {
+                    if (dev.getServiceDataUUID(i).equals(targetUUID)) {
+                        payload = toStdStringRaw(dev.getServiceData(i));
+                        break; 
+                    }
+                }
             }
             
             if (!payload.empty() && payload.size() >= (size_t)(offset + len)) {
@@ -538,21 +464,21 @@ class SnifferCallbacks: public BLEAdvertisedDeviceCallbacks {
         String dataStr = "";
 
         // Cattura i Manufacturer Data (MFR)
-        std::string md;
-        if (getAdvField(dev, 0xFF, md)) {
+        if (dev.haveManufacturerData()) {
+            std::string md = dev.getManufacturerData();
             dataStr = "MFR=";
             for (size_t i = 0; i < md.size(); i++) {
                 char hex[3]; sprintf(hex, "%02X", (uint8_t)md[i]); dataStr += hex;
             }
         }
         // Oppure cattura i Service Data (SVC)
-        else {
-            uint16_t uuid16 = 0;
-            std::string sd;
-            if (getFirstServiceData16Raw(dev, uuid16, sd)) {
-                char uuidHex[5];
-                sprintf(uuidHex, "%04X", uuid16);
-                dataStr = "SVC=" + String(uuidHex) + "=";
+        else if (dev.haveServiceData()) {
+                int count = dev.getServiceDataCount();
+            if (count > 0) {
+                BLEUUID uuid = dev.getServiceDataUUID(0);
+                std::string sd = dev.getServiceData(0);
+                // Estrae i 4 caratteri centrali dell'UUID (es. 2a6e)
+                dataStr = "SVC=" + String(uuid.toString().c_str()).substring(4,8) + "=";
                 for (size_t i = 0; i < sd.size(); i++) {
                     char hex[3]; sprintf(hex, "%02X", (uint8_t)sd[i]); dataStr += hex;
                 }
