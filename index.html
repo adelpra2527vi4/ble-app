@@ -215,7 +215,7 @@
         
         <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">ℹ️ Guida Installatore</button>
         
-        <button id="scannerBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">📡 Radar BLE</button>
+        <button id="scannerBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">📡 Sniffer BLE</button>
 
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
@@ -358,7 +358,7 @@
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
             <span class="modal-title" style="display:flex; align-items:center; gap:10px;">
-                Radar Bluetooth 
+                Sniffer Bluetooth 
                 <span id="live-badge" style="font-size: 0.6em; background: #64748b; padding: 2px 6px; border-radius: 4px; color:white;">OFF</span>
             </span>
             <button id="closeScannerBtn" class="modal-close">×</button>
@@ -396,7 +396,7 @@
                 --
             </div>
             
-            <button id="execCopyBtn" class="btn btn-primary" style="width: 100%; font-size: 0.9rem; padding: 0.8rem;">📋 Copia nella Clipboard</button>
+            <button id="execCopyBtn" class="btn btn-primary" style="width: 100%; font-size: 0.9rem; padding: 0.8rem;">Copia regola</button>
         </div>
     </div>
 </div>
@@ -1161,7 +1161,7 @@ window.copyRule = function(type, id, offset) {
     
     // Resetta l'aspetto del bottone di copia
     const copyBtn = document.getElementById('execCopyBtn');
-    copyBtn.innerHTML = "📋 Copia nella Clipboard";
+    copyBtn.innerHTML = "Copia regola";
     copyBtn.style.background = "var(--accent)";
     
     // Apre il modal
@@ -1178,11 +1178,13 @@ window.copyMac = function(btnElement, macAddress) {
         // Cambiamo l'aspetto per dare feedback
         btnElement.innerHTML = "✔ Copiato!";
         btnElement.style.background = "var(--success)";
+        btnElement.style.color = "#ffffff";
         
         // Ripristiniamo dopo 1 secondo
         setTimeout(() => {
             btnElement.innerHTML = originalText;
             btnElement.style.background = originalBg;
+            btnElement.style.color = originalColor;
         }, 1000);
     }).catch(err => {
         console.error("Errore durante la copia del MAC: ", err);
@@ -1254,7 +1256,7 @@ function renderScannerList() {
             <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-family:monospace; font-size:0.9rem; color:var(--text);">${dev.mac}</span>
-                    <span class="status-badge" style="background:#334155;">${type}</span>
+                    
                     
                     <button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
                         ${pinnedMac === dev.mac ? 'Mostra Tutti' : 'Isola Sensore'}
