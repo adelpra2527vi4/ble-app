@@ -1200,14 +1200,58 @@ function handleSnifferData(event) {
         // Salvo il payload precedente per confrontarlo
         let prevPayload = scannedDevices[mac] ? scannedDevices[mac].payload : payload;
 
+        const previous = scannedDevices[mac] || {};
         scannedDevices[mac] = { 
             rssi: parseInt(rssi), 
             payload: payload, 
             prevPayload: prevPayload,
+            changedOffsets: previous.changedOffsets || [],
             time: new Date().toLocaleTimeString() 
         };
         renderScannerList();
     }
+}
+
+function parseSnifferPayload(payload) {
+    const metadataKeys = new Set(['mac', 'fonte', 'source', 'src', 'id']);
+    const rawTokens = payload.split(';').map(t => t.trim()).filter(Boolean);
+    let type = 'N/A';
+    let id = '0000';
+    let rawHex = '';
+
+    rawTokens.forEach(token => {
+        if (token.startsWith('MFR=')) {
+            const data = token.substring(4).replace(/[^0-9a-f]/gi, '').toUpperCase();
+            if (data.length >= 4) {
+                if (type === 'N/A') type = 'MFR';
+                if (id === '0000') id = data.substring(0, 4);
+                rawHex += data.substring(4);
+            }
+            return;
+        }
+
+        if (token.startsWith('SVC=')) {
+            const parts = token.split('=');
+            const svcId = (parts[1] || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+            const data = parts.slice(2).join('').replace(/[^0-9a-f]/gi, '').toUpperCase();
+            if (data) {
+                if (type === 'N/A') type = 'SVC';
+                if (id === '0000' && svcId) id = svcId;
+                rawHex += data;
+            }
+            return;
+        }
+
+        const eqIdx = token.indexOf('=');
+        if (eqIdx > 0) {
+            const key = token.substring(0, eqIdx).trim().toLowerCase();
+            if (metadataKeys.has(key)) return;
+            const data = token.substring(eqIdx + 1).replace(/[^0-9a-f]/gi, '').toUpperCase();
+            rawHex += data;
+        }
+    });
+
+    return { type, id, rawHex };
 }
 
 // Funzione globale per isolare un sensore
@@ -1280,24 +1324,12 @@ function renderScannerList() {
     }
 
     list.innerHTML = devices.map(dev => {
-        let type = "N/A"; let id = "0000"; let rawHex = ""; let prevHex = "";
-
-        // Estrazione dati attuali
-        if (dev.payload.startsWith("MFR=")) {
-            type = "MFR";
-            let raw = dev.payload.substring(4);
-            id = raw.substring(0, 4).toUpperCase();
-            rawHex = raw.substring(4);
-        } else if (dev.payload.startsWith("SVC=")) {
-            type = "SVC";
-            let parts = dev.payload.split("=");
-            id = (parts[1] || "0000").toUpperCase();
-            rawHex = parts[2] || "";
-        }
-
-        // Estrazione dati precedenti (per il diffing)
-        if (dev.prevPayload.startsWith("MFR=")) prevHex = dev.prevPayload.substring(8);
-        else if (dev.prevPayload.startsWith("SVC=")) prevHex = dev.prevPayload.split("=")[2] || "";
+        const parsedCurrent = parseSnifferPayload(dev.payload);
+        const parsedPrev = parseSnifferPayload(dev.prevPayload || "");
+        let type = parsedCurrent.type;
+        let id = parsedCurrent.id;
+        let rawHex = parsedCurrent.rawHex;
+        let prevHex = parsedPrev.rawHex;
 
         let byteLen = rawHex.length / 2;
         let gridHtml = "";
