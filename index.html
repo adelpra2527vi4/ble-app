@@ -1075,15 +1075,24 @@ async function toggleScanner() {
             addLog("Scanner BLE avviato", "tx");
         } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
     } else {
-        isScanning = false;
-        setScannerUiState(false);
+        // STOP logic
+        isScanning = false;           // 1. Mettiamo in pausa immediata la ricezione (grazie alla Modifica 1)
+        setScannerUiState(false);     // 2. Spegniamo la UI subito
+        
         try {
             await snifferCharacteristic.writeValue(new TextEncoder().encode("0"));
             addLog("Scanner BLE fermato", "tx");
         } catch(e) {
-            isScanning = true;
-            setScannerUiState(true);
-            addLog("Errore scanner: " + e.message, "error");
+            // Se c'è congestione (es. GATT in progress), NON riaccendiamo la UI.
+            // Ci limitiamo a loggare l'errore in background.
+            addLog("Forzatura stop (congestione BLE)...", "warn");
+            
+            // Opzionale: Riprova a inviare lo stop dopo 100ms quando il canale si libera
+            setTimeout(() => {
+                if (!isScanning && snifferCharacteristic) {
+                    snifferCharacteristic.writeValue(new TextEncoder().encode("0")).catch(err => console.log(err));
+                }
+            }, 100);
         }
     }
 
@@ -1092,6 +1101,7 @@ async function toggleScanner() {
 }
 
 function handleSnifferData(event) {
+    if (!isScanning) return;
     let value = new TextDecoder().decode(event.target.value);
     let parts = value.split(';');
     if (parts.length >= 3) {
