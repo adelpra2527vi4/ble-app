@@ -436,8 +436,8 @@
             <button id="btn-toggle-scanner" class="btn" style="width: 100%; margin-bottom: 15px; background: var(--accent); color: white; text-align: center;">▶ Avvia Scansione Etere</button>
 
             <div class="scanner-search-row">
-                <input id="scanner-mac-search" type="text" placeholder="Cerca MAC (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
-                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Cerca MAC</button>
+                <input id="scanner-mac-search" type="text" placeholder="Cerca MAC o Nome (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
+                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Cerca MAC o Nome</button>
                 <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Reset</button>
             </div>
             
@@ -1127,7 +1127,7 @@ function renderScannerControls() {
     searchInput.disabled = false;
     searchBtn.disabled = false;
     clearBtn.disabled = false;
-    searchInput.placeholder = "Cerca MAC (intero o parziale)";
+    searchInput.placeholder = "Cerca MAC o Nome (intero o parziale)";
 }
 
 function applyMacSearch() {
@@ -1192,22 +1192,33 @@ function handleSnifferData(event) {
     if (!isScanning) return;
     let value = new TextDecoder().decode(event.target.value);
     let parts = value.split(';');
+    
     if (parts.length >= 3) {
         let mac = parts[0];
         let rssi = parts[1];
-        let payload = parts.slice(2).join(';');
+        
+        // 1. Prendo ESATTAMENTE l'indice 2 per i dati, senza unire il resto
+        let payload = parts[2]; 
+        
+        // 2. Prendo l'indice 3 per il nome
+        let devName = parts.length > 3 && parts[3] !== "" ? parts[3] : "Sconosciuto";
         
         // Salvo il payload precedente per confrontarlo
         let prevPayload = scannedDevices[mac] ? scannedDevices[mac].payload : payload;
 
         const previous = scannedDevices[mac] || {};
+        
+        // 3. Salvo i dati nell'oggetto
         scannedDevices[mac] = { 
+            mac: mac,          
+            name: devName,     
             rssi: parseInt(rssi), 
             payload: payload, 
             prevPayload: prevPayload,
             changedOffsets: previous.changedOffsets || [],
             time: new Date().toLocaleTimeString() 
         };
+        
         renderScannerList();
     }
 }
@@ -1350,11 +1361,21 @@ function renderScannerList() {
     }
 
     if (macSearchQuery) {
-	    devices = devices.filter(d => d.mac.toUpperCase().includes(macSearchQuery.toUpperCase()));
-	}
+        devices = devices.filter(d => {
+            // Controlla se la stringa cercata è nel MAC
+            const matchMac = d.mac.toUpperCase().includes(macSearchQuery.toUpperCase());
+            
+            // Controlla se la stringa cercata è nel Nome (assicurandosi prima che il nome esista)
+            const matchName = d.name && d.name.toUpperCase().includes(macSearchQuery.toUpperCase());
+            
+            // Ritorna true (mostra il dispositivo) se almeno una delle due condizioni è vera
+            return matchMac || matchName;
+        });
+    }
 
     if (devices.length === 0) {
-        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">${macSearchQuery ? 'Nessun MAC trovato con il filtro inserito.' : 'In attesa di segnali...'}</div>`;
+        // Ho cambiato la dicitura da 'Nessun MAC' a 'Nessun dispositivo'
+        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">${macSearchQuery ? 'Nessun dispositivo trovato con il filtro inserito.' : 'In attesa di segnali...'}</div>`;
         return;
     }
 
@@ -1410,29 +1431,31 @@ function renderScannerList() {
 
         return `
         <div style="border: 1px solid ${pinnedMac === dev.mac ? 'var(--accent)' : 'var(--border)'}; padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            
-            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-family:monospace; font-size:0.9rem; color:var(--text);">${dev.mac}</span>
-                    
-                    
-                    <button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
-                        ${pinnedMac === dev.mac ? 'Mostra Tutti' : 'Isola Sensore'}
-                    </button>
-                    
-                    <button class="btn-pin" onclick="event.stopPropagation(); copyMac(this, '${dev.mac}')">
-                        Copia MAC
-                    </button>
-                </div>
-                <span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold;">${dev.rssi} dBm</span>
-            </div>
+					
+			<div style="display:flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
+				<div style="display:flex; align-items:center; gap:8px;">
+					
+					<div style="display:flex; flex-direction:column;">
+						<span style="font-family:monospace; font-size:0.9rem; color:var(--text);">${dev.mac}</span>
+						<span style="font-size:0.75rem; color:#38bdf8; font-weight:bold;">${dev.name && dev.name !== 'Sconosciuto' ? dev.name : 'Senza nome'}</span>
+					</div>
+					<button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
+						${pinnedMac === dev.mac ? 'Mostra Tutti' : 'Isola Sensore'}
+					</button>
+					
+					<button class="btn-pin" onclick="event.stopPropagation(); copyMac(this, '${dev.mac}')">
+						Copia MAC
+					</button>
+				</div>
+				<span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold; margin-top:4px;">${dev.rssi} dBm</span>
+			</div>
 
-            ${recordsHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
+			${recordsHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
 
-            <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">
-                ⏱ ${dev.time}
-            </div>
-        </div>
+			<div style="font-size: 0.7rem; color: var(--muted); text-align: right;">
+				⏱ ${dev.time}
+			</div>
+		</div>
         `;
     }).join('');
 }
