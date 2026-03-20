@@ -1575,16 +1575,49 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
     }
   });
 
-	document.getElementById('adminAccediBtn').addEventListener('click', function() {
+	document.getElementById('adminAccediBtn').addEventListener('click', async function() {
   const user = document.getElementById('adminUser').value.trim();
   const pass = document.getElementById('adminPass').value;
-  if (user === 'admin' && pass === 'hubpass2024') {
-    document.getElementById('adminLoginOverlay').style.display = 'none';
-    document.getElementById('adminPanelOverlay').style.display = 'flex';
-  } else {
-    document.getElementById('adminError').textContent = 'Credenziali errate.';
+
+  if (!activeService) {
+    document.getElementById('adminError').textContent = 'Connettiti prima al dispositivo BLE.';
+    return;
+  }
+
+  document.getElementById('adminError').textContent = 'Verifica in corso...';
+
+  try {
+    const nameChar = await activeService.getCharacteristic(CHARNAMEUUID);
+
+    // Abilita notify per ricevere la risposta
+    await nameChar.startNotifications();
+
+    const risposta = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout risposta firmware')), 3000);
+      nameChar.addEventListener('characteristicvaluechanged', function handler(e) {
+        const val = new TextDecoder().decode(e.target.value);
+        if (val === 'AUTH_OK' || val === 'AUTH_FAIL') {
+          clearTimeout(timeout);
+          nameChar.removeEventListener('characteristicvaluechanged', handler);
+          resolve(val);
+        }
+      });
+      nameChar.writeValue(new TextEncoder().encode('AUTH:' + user + ':' + pass));
+    });
+
+    if (risposta === 'AUTH_OK') {
+      document.getElementById('adminLoginOverlay').style.display = 'none';
+      document.getElementById('adminPanelOverlay').style.display = 'flex';
+      addLog('Accesso admin effettuato.', 'success');
+    } else {
+      document.getElementById('adminError').textContent = 'Credenziali errate.';
+    }
+
+  } catch(e) {
+    document.getElementById('adminError').textContent = 'Errore: ' + e.message;
   }
 });
+
 
 
   document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
