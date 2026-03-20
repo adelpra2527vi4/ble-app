@@ -1562,18 +1562,30 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
 
 
   document.getElementById('introTrigger').addEventListener('click', function() {
-    introClickCount++;
-    clearTimeout(introClickTimer);
-    introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
-    if (introClickCount >= 10) {
-      introClickCount = 0;
-      document.getElementById('adminLoginOverlay').style.display = 'flex';
-      document.getElementById('adminUser').value = '';
-      document.getElementById('adminPass').value = '';
-      document.getElementById('adminError').textContent = '';
-      document.getElementById('adminUser').focus();
+  introClickCount++;
+  clearTimeout(introClickTimer);
+  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
+  if (introClickCount >= 10) {
+    introClickCount = 0;
+
+    // Blocca se non connesso o in modalità HUB (operativa)
+    if (!activeService) {
+      addLog('Accesso admin: connettiti prima al dispositivo.', 'error');
+      return;
     }
-  });
+    if (activeService.uuid === HUBSVCUUID) {
+      addLog('Accesso admin non disponibile in modalità operativa.', 'error');
+      return;
+    }
+
+    document.getElementById('adminLoginOverlay').style.display = 'flex';
+    document.getElementById('adminUser').value = '';
+    document.getElementById('adminPass').value = '';
+    document.getElementById('adminError').textContent = '';
+    document.getElementById('adminUser').focus();
+  }
+});
+
 
 
 	document.getElementById('adminAccediBtn').addEventListener('click', async function() {
