@@ -231,6 +231,9 @@
 		
     </style>
 </head>
+
+
+
 <body>
 
 <div id="app-shell">
@@ -352,7 +355,10 @@
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
-            <h3>Introduzione</h3>
+			<span id="introTrigger" 
+			      style="cursor:default; user-select:none;" 
+			      onclick="handleIntroClick()">Introduzione</span>
+
             <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
 			<br>
 			<p>Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <b>Sniffer integrato</b>.</p>
@@ -1088,7 +1094,7 @@ async function saveSensorCount() {
 //  FACTORY RESET
 // ================================================================
 async function performReset() {
-    if (!confirm('Reset TUTTA la configurazione?')) return;
+    if (!confirm('Cancellare tutti i dispositivi e le regole di decodifica?\n(Nome hub e configurazione Wi-Fi NON vengono toccati)')) return;
     try {
         const c = await activeService.getCharacteristic(CHAR_RESET_UUID);
         c.writeValue(new TextEncoder().encode("1")).catch(() => {});
@@ -1544,6 +1550,105 @@ renderScannerControls();
     });
   }
 </script>
+
+// ================================================================
+// ADMIN LOGIN — 10 click su "Introduzione"
+// ================================================================
+let introClickCount = 0;
+let introClickTimer = null;
+
+function handleIntroClick() {
+  introClickCount++;
+  clearTimeout(introClickTimer);
+  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
+  if (introClickCount >= 10) {
+    introClickCount = 0;
+    showAdminLogin();
+  }
+}
+
+function showAdminLogin() {
+  document.getElementById('adminLoginOverlay').style.display = 'flex';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+  document.getElementById('adminError').textContent = '';
+  document.getElementById('adminUser').focus();
+}
+
+function hideAdminLogin() {
+  document.getElementById('adminLoginOverlay').style.display = 'none';
+}
+
+function submitAdminLogin() {
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  // Le credenziali vengono lette dalla caratteristica BLE CONFIG_NAME
+  // oppure confrontate con costanti note. 
+  // Poiché le credenziali sono hardcoded nel firmware e non esposte via BLE,
+  // la verifica avviene inviando user:pass al dispositivo via una caratteristica dedicata.
+  // Il device risponde "OK" o "FAIL".
+  sendAdminCredentials(user, pass);
+}
+
+async function sendAdminCredentials(user, pass) {
+  // Usa la caratteristica CONFIG_NAME_UUID (DDDD0001-...-FFFF) che ora
+  // il firmware usa anche per auth se il valore inizia con "AUTH:"
+  if (!bleConnected || !configChar) {
+    document.getElementById('adminError').textContent = 'Connettiti prima al dispositivo BLE.';
+    return;
+  }
+  try {
+    const encoder = new TextEncoder();
+    await configChar.writeValue(encoder.encode("AUTH:" + user + ":" + pass));
+    // La risposta arriva via notify o via read (vedi nota sotto)
+    // Per semplicità usiamo un timeout + read
+    await new Promise(r => setTimeout(r, 400));
+    const val = await configChar.readValue();
+    const resp = new TextDecoder().decode(val);
+    if (resp === "AUTH_OK") {
+      hideAdminLogin();
+      showAdminPanel();
+    } else {
+      document.getElementById('adminError').textContent = 'Credenziali errate.';
+    }
+  } catch(e) {
+    document.getElementById('adminError').textContent = 'Errore BLE: ' + e.message;
+  }
+}
+
+function showAdminPanel() {
+  document.getElementById('adminPanel').style.display = 'block';
+  // Porta alla sezione admin già esistente nel tuo HTML,
+  // oppure mostra un div dedicato
+  showSection('adminSection'); // usa la tua funzione di navigazione esistente
+}
+
+<!-- ADMIN LOGIN OVERLAY -->
+<div id="adminLoginOverlay" style="
+  display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.6); z-index:9999;
+  justify-content:center; align-items:center;">
+  <div style="background:#fff; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
+    <h3 style="margin-top:0;">🔐 Accesso Amministratore</h3>
+    <input id="adminUser" type="text" placeholder="Username" 
+           style="width:100%; padding:9px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+    <input id="adminPass" type="password" placeholder="Password" 
+           style="width:100%; padding:9px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;"
+           onkeydown="if(event.key==='Enter') submitAdminLogin()">
+    <p id="adminError" style="color:red; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
+    <div style="display:flex; gap:10px;">
+      <button onclick="submitAdminLogin()" 
+              style="flex:1; padding:10px; background:#2196F3; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+        Accedi
+      </button>
+      <button onclick="hideAdminLogin()" 
+              style="flex:1; padding:10px; background:#eee; border:none; border-radius:6px; cursor:pointer;">
+        Annulla
+      </button>
+    </div>
+  </div>
+</div>
+	
 	
 </body>
 </html>
