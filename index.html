@@ -355,7 +355,7 @@
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
-			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;" onclick="handleIntroClick()">Introduzione</h3>
+			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;">Introduzione</h3>
 
 
             <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
@@ -1534,6 +1534,25 @@ ruleModal.addEventListener('click', (e) => {
 checkBleSupport();
 setScannerUiState(false);
 renderScannerControls();
+
+// --- ADMIN TRIGGER (10 click su Introduzione) ---
+let introClickCount = 0;
+let introClickTimer = null;
+document.getElementById('introTrigger').addEventListener('click', function() {
+  introClickCount++;
+  clearTimeout(introClickTimer);
+  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
+  if (introClickCount >= 10) {
+    introClickCount = 0;
+    document.getElementById('adminLoginOverlay').style.display = 'flex';
+    document.getElementById('adminUser').value = '';
+    document.getElementById('adminPass').value = '';
+    document.getElementById('adminError').textContent = '';
+    document.getElementById('adminUser').focus();
+  }
+});
+	
+	
 </script>
 
 <script>
