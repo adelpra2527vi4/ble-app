@@ -1551,6 +1551,33 @@ document.getElementById('introTrigger').addEventListener('click', function() {
     document.getElementById('adminUser').focus();
   }
 });
+
+document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
+  document.getElementById('adminLoginOverlay').style.display = 'none';
+});
+
+
+document.getElementById('adminAccediBtn').addEventListener('click', function() {
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  if (user === 'admin' && pass === 'hubpass2024') {
+    document.getElementById('adminLoginOverlay').style.display = 'none';
+    document.getElementById('sysPanel').classList.remove('hidden');
+    document.getElementById('dangerPanel').classList.remove('hidden');
+    addLog('Accesso admin effettuato.', 'success');
+  } else {
+    document.getElementById('adminError').textContent = 'Credenziali errate.';
+  }
+});
+
+document.getElementById('adminUser').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('adminPass').focus();
+});
+
+document.getElementById('adminPass').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('adminAccediBtn').click();
+});
+
 	
 	
 </script>
@@ -1656,10 +1683,10 @@ function showAdminPanel() {
            onkeydown="if(event.key==='Enter') submitAdminLogin()">
     <p id="adminError" style="color:red; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
     <div style="display:flex; gap:10px;">
-      <button onclick="submitAdminLogin()" 
-              style="flex:1; padding:10px; background:#2196F3; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-        Accedi
-      </button>
+      <button id="adminAccediBtn" style="flex:1; padding:10px; background:#2196F3; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+		  Accedi
+	  </button>
+
       <button onclick="hideAdminLogin()" 
               style="flex:1; padding:10px; background:#eee; border:none; border-radius:6px; cursor:pointer;">
         Annulla
