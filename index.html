@@ -358,6 +358,7 @@
 			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;">Introduzione</h3>
 
 
+
             <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
 			<br>
 			<p>Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <b>Sniffer integrato</b>.</p>
@@ -1535,166 +1536,71 @@ checkBleSupport();
 setScannerUiState(false);
 renderScannerControls();
 
-// --- ADMIN TRIGGER (10 click su Introduzione) ---
-let introClickCount = 0;
-let introClickTimer = null;
-document.getElementById('introTrigger').addEventListener('click', function() {
-  introClickCount++;
-  clearTimeout(introClickTimer);
-  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
-  if (introClickCount >= 10) {
-    introClickCount = 0;
-    document.getElementById('adminLoginOverlay').style.display = 'flex';
-    document.getElementById('adminUser').value = '';
-    document.getElementById('adminPass').value = '';
-    document.getElementById('adminError').textContent = '';
-    document.getElementById('adminUser').focus();
-  }
-});
+// --- ADMIN: tutto in DOMContentLoaded per evitare problemi di scope ---
+document.addEventListener('DOMContentLoaded', function() {
+  let introClickCount = 0;
+  let introClickTimer = null;
 
-document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
-  document.getElementById('adminLoginOverlay').style.display = 'none';
-});
+  document.getElementById('introTrigger').addEventListener('click', function() {
+    introClickCount++;
+    clearTimeout(introClickTimer);
+    introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
+    if (introClickCount >= 10) {
+      introClickCount = 0;
+      document.getElementById('adminLoginOverlay').style.display = 'flex';
+      document.getElementById('adminUser').value = '';
+      document.getElementById('adminPass').value = '';
+      document.getElementById('adminError').textContent = '';
+      document.getElementById('adminUser').focus();
+    }
+  });
 
-
-document.getElementById('adminAccediBtn').addEventListener('click', function() {
-  const user = document.getElementById('adminUser').value.trim();
-  const pass = document.getElementById('adminPass').value;
-  if (user === 'admin' && pass === 'hubpass2024') {
-    document.getElementById('adminLoginOverlay').style.display = 'none';
-    document.getElementById('sysPanel').classList.remove('hidden');
-    document.getElementById('dangerPanel').classList.remove('hidden');
-    addLog('Accesso admin effettuato.', 'success');
-  } else {
-    document.getElementById('adminError').textContent = 'Credenziali errate.';
-  }
-});
-
-document.getElementById('adminUser').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('adminPass').focus();
-});
-
-document.getElementById('adminPass').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('adminAccediBtn').click();
-});
-
-	
-	
-</script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((registration) => {
-          console.log('Service Worker registrato con successo:', registration.scope);
-        })
-        .catch((error) => {
-          console.log('Registrazione Service Worker fallita:', error);
-        });
-    });
-  }
-</script>
-
-// ================================================================
-// ADMIN LOGIN — 10 click su "Introduzione"
-// ================================================================
-let introClickCount = 0;
-let introClickTimer = null;
-
-function handleIntroClick() {
-  introClickCount++;
-  clearTimeout(introClickTimer);
-  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
-  if (introClickCount >= 10) {
-    introClickCount = 0;
-    showAdminLogin();
-  }
-}
-
-function showAdminLogin() {
-  document.getElementById('adminLoginOverlay').style.display = 'flex';
-  document.getElementById('adminUser').value = '';
-  document.getElementById('adminPass').value = '';
-  document.getElementById('adminError').textContent = '';
-  document.getElementById('adminUser').focus();
-}
-
-function hideAdminLogin() {
-  document.getElementById('adminLoginOverlay').style.display = 'none';
-}
-
-function submitAdminLogin() {
-  const user = document.getElementById('adminUser').value.trim();
-  const pass = document.getElementById('adminPass').value;
-  // Le credenziali vengono lette dalla caratteristica BLE CONFIG_NAME
-  // oppure confrontate con costanti note. 
-  // Poiché le credenziali sono hardcoded nel firmware e non esposte via BLE,
-  // la verifica avviene inviando user:pass al dispositivo via una caratteristica dedicata.
-  // Il device risponde "OK" o "FAIL".
-  sendAdminCredentials(user, pass);
-}
-
-async function sendAdminCredentials(user, pass) {
-  if (!activeService) {
-    document.getElementById('adminError').textContent = 'Connettiti prima al dispositivo BLE.';
-    return;
-  }
-  try {
-    const nameChar = await activeService.getCharacteristic(CHARNAMEUUID);
-    const encoder = new TextEncoder();
-    await nameChar.writeValue(encoder.encode('AUTH:' + user + ':' + pass));
-    await new Promise(r => setTimeout(r, 400));
-    const val = await nameChar.readValue();
-    const resp = new TextDecoder().decode(val);
-    if (resp === 'AUTH_OK') {
-      hideAdminLogin();
-      // Porta nella zona pericolosa / impostazioni
+  document.getElementById('adminAccediBtn').addEventListener('click', function() {
+    const user = document.getElementById('adminUser').value.trim();
+    const pass = document.getElementById('adminPass').value;
+    if (user === 'admin' && pass === 'hubpass2024') {
+      document.getElementById('adminLoginOverlay').style.display = 'none';
       document.getElementById('sysPanel').classList.remove('hidden');
       document.getElementById('dangerPanel').classList.remove('hidden');
       addLog('Accesso admin effettuato.', 'success');
     } else {
       document.getElementById('adminError').textContent = 'Credenziali errate.';
     }
-  } catch(e) {
-    document.getElementById('adminError').textContent = 'Errore BLE: ' + e.message;
-  }
-}
+  });
 
+  document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
+    document.getElementById('adminLoginOverlay').style.display = 'none';
+  });
 
-function showAdminPanel() {
-  document.getElementById('adminPanel').style.display = 'block';
-  // Porta alla sezione admin già esistente nel tuo HTML,
-  // oppure mostra un div dedicato
-  showSection('adminSection'); // usa la tua funzione di navigazione esistente
-}
+  document.getElementById('adminUser').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('adminPass').focus();
+  });
+
+  document.getElementById('adminPass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('adminAccediBtn').click();
+  });
+});
+</script>
 
 <!-- ADMIN LOGIN OVERLAY -->
-<div id="adminLoginOverlay" style="
-  display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-  background:rgba(0,0,0,0.6); z-index:9999;
-  justify-content:center; align-items:center;">
-  <div style="background:#fff; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
-    <h3 style="margin-top:0;">🔐 Accesso Amministratore</h3>
-    <input id="adminUser" type="text" placeholder="Username" 
-           style="width:100%; padding:9px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
-    <input id="adminPass" type="password" placeholder="Password" 
-           style="width:100%; padding:9px; margin-bottom:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;"
-           onkeydown="if(event.key==='Enter') submitAdminLogin()">
-    <p id="adminError" style="color:red; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
+<div id="adminLoginOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
+    <h3 style="margin-top:0; color:#e2e8f0;">🔐 Accesso Amministratore</h3>
+    <input id="adminUser" type="text" placeholder="Username"
+           style="width:100%; padding:9px; margin-bottom:10px; background:#0a1628; border:1px solid #334155; border-radius:6px; color:#e2e8f0; box-sizing:border-box;">
+    <input id="adminPass" type="password" placeholder="Password"
+           style="width:100%; padding:9px; margin-bottom:10px; background:#0a1628; border:1px solid #334155; border-radius:6px; color:#e2e8f0; box-sizing:border-box;">
+    <p id="adminError" style="color:#f87171; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
     <div style="display:flex; gap:10px;">
-      <button id="adminAccediBtn" style="flex:1; padding:10px; background:#2196F3; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-		  Accedi
-	  </button>
-
-      <button onclick="hideAdminLogin()" 
-              style="flex:1; padding:10px; background:#eee; border:none; border-radius:6px; cursor:pointer;">
+      <button id="adminAccediBtn" style="flex:1; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700;">
+        Accedi
+      </button>
+      <button id="adminAnnullaBtn" style="flex:1; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">
         Annulla
       </button>
     </div>
   </div>
 </div>
-	
-	
+
 </body>
 </html>
