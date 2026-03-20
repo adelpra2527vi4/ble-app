@@ -1546,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Invia "WIZARD_RESET" via seriale — lato firmware il comando "reset" su Serial
   // lo gestiamo mandando un valore speciale sulla caratteristica nome
   if (activeService) {
-    activeService.getCharacteristic(CHARNAMEUUID).then(c => {
+    activeService.getCharacteristic(CHAR_NAME_UUID).then(c => {
       c.writeValue(new TextEncoder().encode('WIZARD_RESET'));
       addLog('Comando Wizard Reset inviato.', 'success');
     }).catch(e => addLog('Errore: ' + e.message, 'error'));
@@ -1587,7 +1587,7 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
   document.getElementById('adminError').textContent = 'Verifica in corso...';
 
   try {
-    const nameChar = await activeService.getCharacteristic(CHARNAMEUUID);
+    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
 
     // Abilita notify per ricevere la risposta
     await nameChar.startNotifications();
