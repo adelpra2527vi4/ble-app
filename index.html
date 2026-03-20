@@ -355,9 +355,8 @@
             <button id="closeModalBtn" class="modal-close">×</button>
         </div>
         <div class="modal-body">
-			<span id="introTrigger" 
-			      style="cursor:default; user-select:none;" 
-			      onclick="handleIntroClick()">Introduzione</span>
+			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;" onclick="handleIntroClick()">Introduzione</h3>
+
 
             <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
 			<br>
@@ -1591,23 +1590,23 @@ function submitAdminLogin() {
 }
 
 async function sendAdminCredentials(user, pass) {
-  // Usa la caratteristica CONFIG_NAME_UUID (DDDD0001-...-FFFF) che ora
-  // il firmware usa anche per auth se il valore inizia con "AUTH:"
-  if (!bleConnected || !configChar) {
+  if (!activeService) {
     document.getElementById('adminError').textContent = 'Connettiti prima al dispositivo BLE.';
     return;
   }
   try {
+    const nameChar = await activeService.getCharacteristic(CHARNAMEUUID);
     const encoder = new TextEncoder();
-    await configChar.writeValue(encoder.encode("AUTH:" + user + ":" + pass));
-    // La risposta arriva via notify o via read (vedi nota sotto)
-    // Per semplicità usiamo un timeout + read
+    await nameChar.writeValue(encoder.encode('AUTH:' + user + ':' + pass));
     await new Promise(r => setTimeout(r, 400));
-    const val = await configChar.readValue();
+    const val = await nameChar.readValue();
     const resp = new TextDecoder().decode(val);
-    if (resp === "AUTH_OK") {
+    if (resp === 'AUTH_OK') {
       hideAdminLogin();
-      showAdminPanel();
+      // Porta nella zona pericolosa / impostazioni
+      document.getElementById('sysPanel').classList.remove('hidden');
+      document.getElementById('dangerPanel').classList.remove('hidden');
+      addLog('Accesso admin effettuato.', 'success');
     } else {
       document.getElementById('adminError').textContent = 'Credenziali errate.';
     }
@@ -1615,6 +1614,7 @@ async function sendAdminCredentials(user, pass) {
     document.getElementById('adminError').textContent = 'Errore BLE: ' + e.message;
   }
 }
+
 
 function showAdminPanel() {
   document.getElementById('adminPanel').style.display = 'block';
