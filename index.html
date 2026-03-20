@@ -1541,6 +1541,26 @@ document.addEventListener('DOMContentLoaded', function() {
   let introClickCount = 0;
   let introClickTimer = null;
 
+  document.getElementById('adminWizardBtn').addEventListener('click', function() {
+  if (!confirm('Riavviare il Wizard WiFi? Il dispositivo si riavvierà in modalità Access Point.')) return;
+  // Invia "WIZARD_RESET" via seriale — lato firmware il comando "reset" su Serial
+  // lo gestiamo mandando un valore speciale sulla caratteristica nome
+  if (activeService) {
+    activeService.getCharacteristic(CHARNAMEUUID).then(c => {
+      c.writeValue(new TextEncoder().encode('WIZARD_RESET'));
+      addLog('Comando Wizard Reset inviato.', 'success');
+    }).catch(e => addLog('Errore: ' + e.message, 'error'));
+  } else {
+    addLog('Non connesso — invia "reset" dalla seriale USB.', 'error');
+  }
+  document.getElementById('adminPanelOverlay').style.display = 'none';
+});
+
+document.getElementById('adminChiudiBtn').addEventListener('click', function() {
+  document.getElementById('adminPanelOverlay').style.display = 'none';
+});
+
+
   document.getElementById('introTrigger').addEventListener('click', function() {
     introClickCount++;
     clearTimeout(introClickTimer);
@@ -1555,18 +1575,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  document.getElementById('adminAccediBtn').addEventListener('click', function() {
-    const user = document.getElementById('adminUser').value.trim();
-    const pass = document.getElementById('adminPass').value;
-    if (user === 'admin' && pass === 'hubpass2024') {
-      document.getElementById('adminLoginOverlay').style.display = 'none';
-      document.getElementById('sysPanel').classList.remove('hidden');
-      document.getElementById('dangerPanel').classList.remove('hidden');
-      addLog('Accesso admin effettuato.', 'success');
-    } else {
-      document.getElementById('adminError').textContent = 'Credenziali errate.';
-    }
-  });
+	document.getElementById('adminAccediBtn').addEventListener('click', function() {
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  if (user === 'admin' && pass === 'hubpass2024') {
+    document.getElementById('adminLoginOverlay').style.display = 'none';
+    document.getElementById('adminPanelOverlay').style.display = 'flex';
+  } else {
+    document.getElementById('adminError').textContent = 'Credenziali errate.';
+  }
+});
+
 
   document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
     document.getElementById('adminLoginOverlay').style.display = 'none';
@@ -1601,6 +1620,21 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+
+<!-- ADMIN PANEL OVERLAY -->
+<div id="adminPanelOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
+    <h3 style="margin-top:0; color:#e2e8f0;">⚙️ Pannello Admin</h3>
+    <p style="color:#94a3b8; font-size:0.85em;">Operazioni riservate all'amministratore.</p>
+    <button id="adminWizardBtn" style="width:100%; padding:10px; background:#ca8a04; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; margin-bottom:10px;">
+      🔄 Riavvia Wizard WiFi
+    </button>
+    <button id="adminChiudiBtn" style="width:100%; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">
+      Chiudi
+    </button>
+  </div>
+</div>
+
 
 </body>
 </html>
