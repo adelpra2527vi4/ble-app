@@ -1575,6 +1575,7 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
     }
   });
 
+
 	document.getElementById('adminAccediBtn').addEventListener('click', async function() {
   const user = document.getElementById('adminUser').value.trim();
   const pass = document.getElementById('adminPass').value;
@@ -1589,9 +1590,26 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
   try {
     const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
 
-    // Abilita notify per ricevere la risposta
-    await nameChar.startNotifications();
+    // ← QUI, sostituisci l'await nameChar.startNotifications() con questo:
+    try {
+      await nameChar.startNotifications();
+    } catch(e) {
+      // notify non supportato — uso polling diretto
+      await nameChar.writeValue(new TextEncoder().encode('AUTH:' + user + ':' + pass));
+      await new Promise(r => setTimeout(r, 500));
+      const val = await nameChar.readValue();
+      const resp = new TextDecoder().decode(val);
+      if (resp === 'AUTH_OK') {
+        document.getElementById('adminLoginOverlay').style.display = 'none';
+        document.getElementById('adminPanelOverlay').style.display = 'flex';
+        addLog('Accesso admin effettuato.', 'success');
+      } else {
+        document.getElementById('adminError').textContent = 'Credenziali errate.';
+      }
+      return; // esce prima del codice notify sotto
+    }
 
+    // Questo esegue solo se startNotifications ha funzionato
     const risposta = await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timeout risposta firmware')), 3000);
       nameChar.addEventListener('characteristicvaluechanged', function handler(e) {
