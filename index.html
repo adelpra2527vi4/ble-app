@@ -929,6 +929,11 @@ function updateSensorCard(id, rawString) {
 //  RELAY
 // ================================================================
 function createRelayButton(index) {
+	if (!isEnabled) {
+        btn.disabled = true;
+        btn.style.opacity = '0.2';
+        btn.style.cursor = 'not-allowed';
+    }
     const btn = document.createElement('button');
     btn.id = `relay-btn-${index}`;
     btn.className = 'relay-btn';
