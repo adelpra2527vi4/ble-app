@@ -261,9 +261,9 @@
         <button id="connectBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">Connetti Dispositivo</button>
         <button id="disconnectBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem;">Disconnetti</button>
         
-        <button id="infoBtn" class="btn btn-secondary" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">Manuale</button>
+        <button id="infoBtn" class="btn btn-secondary" onclick="openModal('infoModal')" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid var(--border);">Manuale</button>
         
-        <button id="scannerBtn" class="btn btn-secondary hidden" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">Sniffer BLE</button>
+        <button id="scannerBtn" class="btn btn-secondary hidden" onclick="openModal('scannerModal')" style="margin-bottom:0.5rem; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;">Sniffer BLE</button>
 
         <div id="sysPanel" class="panel hidden" style="margin-top:1rem;">
             <div class="panel-title">Impostazioni Sistema</div>
@@ -1344,7 +1344,7 @@ window.copyMac = function(btnElement, macAddress) {
         setTimeout(() => {
             btnElement.innerHTML = originalText;
             btnElement.style.background = originalBg;
-            btnElement.style.color = originalColor;
+            btnElement.style.color = ''; // ripristina colore default
         }, 1000);
     }).catch(err => {
         console.error("Errore durante la copia del MAC: ", err);
@@ -1463,6 +1463,26 @@ function renderScannerList() {
 }
 
 // ================================================================
+//  MODAL HELPERS
+// ================================================================
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.add('open');
+}
+
+async function closeScannerModal() {
+    scannerModal.classList.remove('open');
+    if (isScanning) await toggleScanner();
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.remove('open');
+}
+
+// ================================================================
 //  EVENTI
 // ================================================================
 connectBtn.addEventListener('click', connect);
@@ -1480,20 +1500,16 @@ const saveNameBtn = document.getElementById('saveNameBtn');
 if (saveNameBtn) saveNameBtn.addEventListener('click', saveHubName);
 
 // Apertura/Chiusura Info
-document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('open'));
-document.getElementById('closeModalBtn').addEventListener('click', () => infoModal.classList.remove('open'));
-infoModal.addEventListener('click', (e) => { if (e.target === infoModal) infoModal.classList.remove('open'); });
+document.getElementById('infoBtn').addEventListener('click', () => openModal('infoModal'));
+document.getElementById('closeModalBtn').addEventListener('click', () => closeModal('infoModal'));
+infoModal.addEventListener('click', (e) => { if (e.target === infoModal) closeModal('infoModal'); });
 
 // Apertura/Chiusura Scanner
-document.getElementById('scannerBtn').addEventListener('click', () => scannerModal.classList.add('open'));
-document.getElementById('closeScannerBtn').addEventListener('click', async () => {
-    scannerModal.classList.remove('open');
-    if (isScanning) await toggleScanner();
-});
+document.getElementById('scannerBtn').addEventListener('click', () => openModal('scannerModal'));
+document.getElementById('closeScannerBtn').addEventListener('click', closeScannerModal);
 scannerModal.addEventListener('click', async (e) => { 
     if (e.target === scannerModal) {
-        scannerModal.classList.remove('open');
-        if (isScanning) await toggleScanner();
+        await closeScannerModal();
     } 
 });
 document.getElementById('btn-toggle-scanner').addEventListener('click', toggleScanner);
