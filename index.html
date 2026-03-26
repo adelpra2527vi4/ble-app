@@ -55,6 +55,7 @@
         .btn-danger:hover { background: var(--danger); color: #fff; }
         .btn-sm  { padding: 0.4rem 0.8rem; font-size: 0.72rem; width: auto; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .hidden { display: none !important; }
 
         .form-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
         .form-row label { font-size: 0.78rem; color: var(--text); }
@@ -1474,8 +1475,9 @@ disconnectBtn.addEventListener('click', () => {
     bleDevice = null; gattServer = null; activeService = null;
 });
 document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
-document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
+const saveNameBtn = document.getElementById('saveNameBtn');
+if (saveNameBtn) saveNameBtn.addEventListener('click', saveHubName);
 
 // Apertura/Chiusura Info
 document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('open'));
@@ -1536,18 +1538,29 @@ document.addEventListener('DOMContentLoaded', function() {
   let introClickCount = 0;
   let introClickTimer = null;
 
+  async function sendAdminCommand(command, successMessage) {
+    if (!activeService) {
+      addLog('Non connesso — comando admin non inviato.', 'error');
+      return;
+    }
+    try {
+      const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
+      await nameChar.writeValue(new TextEncoder().encode(command));
+      addLog(successMessage, 'success');
+    } catch (e) {
+      addLog('Errore: ' + e.message, 'error');
+    }
+  }
+
   document.getElementById('adminWizardBtn').addEventListener('click', function() {
   if (!confirm('Riavviare il Wizard WiFi? Il dispositivo si riavvierà in modalità Access Point.')) return;
-  // Invia "WIZARD_RESET" via seriale — lato firmware il comando "reset" su Serial
-  // lo gestiamo mandando un valore speciale sulla caratteristica nome
-  if (activeService) {
-    activeService.getCharacteristic(CHAR_NAME_UUID).then(c => {
-      c.writeValue(new TextEncoder().encode('WIZARD_RESET'));
-      addLog('Comando Wizard Reset inviato.', 'success');
-    }).catch(e => addLog('Errore: ' + e.message, 'error'));
-  } else {
-    addLog('Non connesso — invia "reset" dalla seriale USB.', 'error');
-  }
+  sendAdminCommand('WIZARD_RESET', 'Comando Wizard Reset inviato.');
+  document.getElementById('adminPanelOverlay').style.display = 'none';
+});
+
+document.getElementById('adminRegenTargaBtn').addEventListener('click', function() {
+  if (!confirm('Rigenerare la targa del dispositivo? Il dispositivo verrà riavviato.')) return;
+  sendAdminCommand('REGEN_TARGA', 'Comando rigenerazione targa inviato. Riavvio dispositivo in corso...');
   document.getElementById('adminPanelOverlay').style.display = 'none';
 });
 
@@ -1686,6 +1699,9 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
     <p style="color:#94a3b8; font-size:0.85em;">Operazioni riservate all'amministratore.</p>
     <button id="adminWizardBtn" style="width:100%; padding:10px; background:#ca8a04; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; margin-bottom:10px;">
       🔄 Riavvia Wizard WiFi
+    </button>
+    <button id="adminRegenTargaBtn" style="width:100%; padding:10px; background:#0ea5e9; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; margin-bottom:10px;">
+      ♻️ Rigenera Targa
     </button>
     <button id="adminChiudiBtn" style="width:100%; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">
       Chiudi
