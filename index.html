@@ -1575,7 +1575,7 @@ document.getElementById('adminChiudiBtn').addEventListener('click', function() {
       addLog('Accesso admin: connettiti prima al dispositivo.', 'error');
       return;
     }
-    if (activeService.uuid === HUBSVCUUID) {
+    if (activeService.uuid === HUB_SVC_UUID) {
       addLog('Accesso admin non disponibile in modalità operativa.', 'error');
       return;
     }
