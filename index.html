@@ -1475,8 +1475,9 @@ disconnectBtn.addEventListener('click', () => {
     bleDevice = null; gattServer = null; activeService = null;
 });
 document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
-document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
 document.getElementById('resetBtn').addEventListener('click', performReset);
+const saveNameBtn = document.getElementById('saveNameBtn');
+if (saveNameBtn) saveNameBtn.addEventListener('click', saveHubName);
 
 // Apertura/Chiusura Info
 document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('open'));
