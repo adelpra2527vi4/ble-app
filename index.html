@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-	<link rel="manifest" href="manifest.json">
-	<meta name="theme-color" content="#0f172a">
-	<link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terminal Controller</title>
@@ -195,49 +195,42 @@
         @media (max-width: 899px)  { #log-wrap { display: none !important; } }
 		
 		/* --- OTTIMIZZAZIONI MOBILE PER MODALI E SNIFFER --- */
-		/* Fa andare a capo la barra di ricerca su schermi piccoli */
 		.scanner-search-row {
 			display: flex;
 			gap: 8px;
 			margin-bottom: 15px;
-			flex-wrap: wrap; /* Permette agli elementi di andare a capo */
+			flex-wrap: wrap; 
 		}
 
-		/* Forza la rottura delle parole lunghe (come i payload esadecimali) per non far sballare la larghezza */
 		#scanner-list {
 			word-break: break-word; 
 			overflow-x: hidden;
 		}
 
-		/* Regolazioni specifiche per smartphone */
 		@media (max-width: 600px) {
 			.scanner-search-row input {
-				width: 100%; /* L'input prende tutta la riga */
+				width: 100%;
 				flex: none !important;
 			}
 			.scanner-search-row button {
-				flex: 1; /* I pulsanti si dividono lo spazio rimanente */
+				flex: 1;
 				padding: 0.6rem;
 			}
 			
 			.modal-body {
-				padding: 1rem !important; /* Riduce i margini interni su schermi piccoli */
+				padding: 1rem !important;
 			}
 			
 			.modal-header .modal-title {
-				font-size: 0.8rem; /* Riduce leggermente il titolo */
+				font-size: 0.8rem;
 			}
 		}
-		
     </style>
 </head>
-
-
 
 <body>
 
 <div id="app-shell">
-	
 	<div id="sidebar">				  
         <div id="app-header">
             <div id="app-title" style="display: flex; align-items: center; gap: 0.3rem;">
@@ -245,8 +238,7 @@
 				<polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
 			</svg>
 			Terminal controller
-		</div>
-            
+		    </div>
         </div>
 
         <div id="ble-alert"></div>
@@ -295,16 +287,12 @@
                 <div id="log"></div>
             </div>
         </div>
-    </div>
-
-    <div id="main-area">
-
+    </div> <div id="main-area">
         <div id="configSlotsWrapper" class="hidden">
             <div id="configSlotsContainer"></div>
         </div>
 
         <div id="hubPanel" class="hidden">
-
             <div class="panel" style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 1rem;">
                 <div>
                     <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">Live Data Stream</div>
@@ -337,11 +325,7 @@
                 <div id="logMobile"></div>
             </div>
         </div>
-
-    </div>
-</div>
-
-<div id="infoModal" class="modal-overlay">
+    </div> </div> <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
             <span class="modal-title">Manuale di installazione</span>
@@ -349,1350 +333,118 @@
         </div>
         <div class="modal-body">
 			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;">Introduzione</h3>
-
-
-
             <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
 			<br>
 			<p>Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <b>Sniffer integrato</b>.</p>
-
             <h3>1. Accesso alla Modalità Configurazione</h3>
             <ul>
                 <li>È necessario mantenere premuto il pulsante <b>BOOT</b> posto sull'Hub finché l'indicatore LED non assume una colorazione <b>BIANCA</b>.</li>
                 <li>Al rilascio del pulsante, il LED inizierà a <b>lampeggiare in BLU</b>, indicando che il dispositivo è disponibile ad essere connesso.</li>
                 <li>Selezionare la funzione <b>Connetti Dispositivo</b> per comunicare con il dispositivo</li>
             </ul>
-
-            <h3>2. Analisi tramite Sniffer Integrato</h3>
-            <p>L'utilizzo dello <b>Sniffer BLE</b> consente di intercettare e analizzare i pacchetti dati dei sensori circostanti in tempo reale.</p>
-			<br>
-			<p>Sono presenti i seguenti pulsanti e funzioni:</p>
-            <ul>
-                <li><b>Isola Sensore:</b> Funzione che nasconde gli altri dispositivi dal traffico di rete per monitorare un singolo dispositivo, particolarmente utile in ambienti con elevata saturazione di segnale.</li>
-                <li><b>Copia MAC:</b> Permette l'acquisizione rapida dell'indirizzo fisico del dispositivo.</li>
-                <li><b>Evidenziazione dei Dati Dinamici:</b> All'interno del Payload, i byte che presentano una colorazione <b style="color: #ef4444;">rossa</b> temporanea <b>non indicano un errore</b>. Tale colorazione evidenzia le variazioni di valore in tempo reale. Stimolando fisicamente il sensore, l'installatore può individuare i byte dinamici (es. temperatura) distinguendoli dalle intestazioni statiche.</li>
-                <li><b>Generazione Automatica della Regola:</b> Selezionando un byte specifico all'interno del Payload, il sistema provvederà a calcolare automaticamente il parametro di Offset, compilando la relativa regola di decodifica.</li>
-            </ul>
-
-            <h3>3. Struttura e Sintassi della Regola</h3>
-            <p>La regola di decodifica istruisce l'Hub sulle coordinate precise per l'estrazione del dato. È composta da 6 parametri separati da virgola:<br>
-            <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
-            <p><i>Nota tecnica: è consentito l'inserimento di regole multiple all'interno del medesimo slot, utilizzando il punto e virgola ( <b>;</b> ) come separatore.</i></p>
-            <ul>
-                <li><b>FONTE:</b> Definisce l'origine del pacchetto. Valori ammessi: <code>SVC</code> (Service Data) oppure <code>MFR</code> (Manufacturer Data).</li>
-                <li><b>ID:</b> Identificativo esadecimale. Nel caso di origine <code>SVC</code>, corrisponde ai primi 2 byte invertiti (es. <code>6e2a</code> si trascrive come <code>2A6E</code>). Nel caso <code>MFR</code>, corrisponde al codice identificativo dell'azienda produttrice. <b>Nota procedurale:</b> in caso di ID non documentato, l'inserimento del valore <code>0</code> consentirà l'elaborazione dell'intero pacchetto da parte dell'Hub.</li>
-                <li><b>OFFSET:</b> Definisce il numero di byte (coppie di caratteri esadecimali) da ignorare a partire dall'inizio del payload per isolare il dato richiesto.</li>
-                <li><b>LUNGHEZZA:</b> Dimensione in byte occupata dal dato (valore compreso tra 1 e 4).</li>
-                <li><b>OPERATORE:</b> Parametro di conversione matematica per l'output finale.
-                    <ul style="margin-top:0.3rem; margin-bottom:0.3rem; color:#94a3b8;">
-                        <li><code>100</code> = Effettua una divisione per 100 (es. il valore 2450 viene restituito come 24.50).</li>
-                        <li><code>S1</code> = Signed (abilita l'elaborazione dei numeri negativi).</li>
-                        <li><code>B1</code> = Big-Endian (inverte l'ordine dei byte per correggere discrepanze di lettura).</li>
-                        <li><code>36</code> = Esempio pratico: qualora il sensore trasmetta un valore fisso pari a "36" per segnalare l'apertura di un contatto, la divisione per 36 restituirà il valore binario "1" (stato logico alto).</li>
-                    </ul>
-                </li>
-                <li><b>NOME:</b> Etichetta di destinazione per la visualizzazione dell'output (es. <code>temp</code>, <code>lux</code>, <code>pir</code>).</li>
-            </ul>
-
-            <h3>4. Inserimento e Memorizzazione</h3>
-            <p>Una volta isolato l'indirizzo MAC e generata la relativa Regola tramite lo Scanner, l'installatore dovrà riportare tali valori negli appositi campi della sezione <b>Dispositivi</b>. È essenziale abilitare l'interruttore del dispositivo prima di selezionare <b>Salva nel Dispositivo</b>. Tale procedura va ripetuta per ciascun nodo della rete.</p>
-
-            <h3>5. Attivazione della Modalità Operativa</h3>
-            <ul>
-                <li>Al termine delle operazioni di configurazione, è necessario mantenere nuovamente premuto il pulsante <b>BOOT</b> sull'Hub.</li>
-                <li>Il dispositivo terminerà la fase di ascolto e avvierà il ciclo di elaborazione autonoma basato sulle regole appena memorizzate.</li>
-                <li>L'operatore ha la facoltà di ristabilire la connessione tramite l'interfaccia web per monitorare in tempo reale il flusso dei dati decodificati.</li>
-            </ul>
-
-            <h3>Casistiche Particolari</h3>
-            <ul>
-                <li><b>Indirizzo MAC Integrato:</b> Molti sensori includono il proprio indirizzo MAC all'interno del payload. Qualora si rilevino valori estremamente elevati e privi di variazione, è probabile che si stia leggendo l'indirizzo fisico. La risoluzione richiede l'incremento dell'OFFSET per bypassare tale stringa.</li>
-                <li><b>Valori Fluttuanti Incoerenti:</b> Se i dati riportano variazioni cicliche repentine prive di logica ambientale, è altamente probabile che la lettura stia interessando il "contatore di pacchetti" interno al sensore. Si raccomanda di traslare l'OFFSET di un byte.</li>
-            </ul>
-
-            <h3>Esempi di Configurazione Note</h3>
-            <p>
-                <b>Sensore ELA Temp (supporto valori negativi):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
-                <b>Sensore Shelly BLU (Luminosità + Stato Contatto):</b> <code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code><br>
-                <b>Sensore Xiaomi (Temperatura + Umidità):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code>
-            </p>
-        </div>
+            </div>
     </div>
 </div>
 
-<div id="scannerModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 800px;">
-        <div class="modal-header">
-            <span class="modal-title" style="display:flex; align-items:center; gap:10px;">
-                Sniffer Bluetooth 
-                <span id="live-badge" style="font-size: 0.6em; background: #64748b; padding: 2px 6px; border-radius: 4px; color:white;">OFF</span>
-            </span>
-            <button id="closeScannerBtn" class="modal-close">×</button>
-        </div>
-        <div class="modal-body" style="padding: 1.5rem;">
-            <p style="margin-bottom: 1rem; color: var(--muted);">Usa questo strumento per intercettare i sensori sconosciuti. Avvia lo scanner e muovi il sensore (o coprilo) per vedere quale payload cambia!</p>
-            
-            <button id="btn-toggle-scanner" class="btn" style="width: 100%; margin-bottom: 15px; background: var(--accent); color: white; text-align: center;">▶ Avvia Scansione Etere</button>
-
-            <div class="scanner-search-row">
-                <input id="scanner-mac-search" type="text" placeholder="Cerca MAC o Nome (intero o parziale)" style="flex:1; background:#020617; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:0.6rem 0.75rem;" disabled>
-                <button id="btn-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Cerca MAC o Nome</button>
-                <button id="btn-clear-search-mac" class="btn btn-secondary" style="white-space:nowrap;" disabled>Reset</button>
-            </div>
-            
-            <div id="scanner-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                <div style="text-align: center; color: var(--muted); padding: 20px;">Nessun dato. Avvia lo scanner.</div>
-            </div>
-        </div>
+<div id="adminLoginOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+    <h3 style="margin-top:0; color:#e2e8f0; text-align:center;">Accesso Riservato</h3>
+    <input type="password" id="adminPasswordInput" placeholder="Inserisci Password" style="width:100%; padding:10px; margin:15px 0; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#fff; text-align:center;">
+    <p id="adminError" style="color:#f87171; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
+    <div style="display:flex; gap:10px;">
+      <button id="adminAccediBtn" style="flex:1; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700;">Accedi</button>
+      <button id="adminAnnullaBtn" style="flex:1; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">Annulla</button>
     </div>
+  </div>
 </div>
 
-<div id="ruleModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 450px;">
-        <div class="modal-header">
-            <span class="modal-title" style="color: #38bdf8;">Regola Estratta</span>
-            <button id="closeRuleModalBtn" class="modal-close">×</button>
-        </div>
-        <div class="modal-body" style="text-align: center;">
-            <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem;">
-                Ecco la regola base calcolata per questo byte. Ricordati di cambiare <b>dato_nuovo</b> con il nome che preferisci (es. <i>temp</i>, <i>lux</i>) e di sistemare la lunghezza se serve.
-            </p>
-            
-            <div id="generatedRuleText" style="background: #020617; padding: 12px; border-radius: 6px; border: 1px dashed #38bdf8; font-family: monospace; font-size: 1.1rem; color: #4ade80; margin-bottom: 1.5rem; word-wrap: break-word;">
-                --
-            </div>
-            
-            <button id="execCopyBtn" class="btn btn-primary" style="width: 100%; font-size: 0.9rem; padding: 0.8rem;">Copia regola</button>
-        </div>
+<div id="adminPanelOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
+    <h3 style="margin-top:0; color:#e2e8f0;">⚙️ Pannello Admin</h3>
+    
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button id="adminWizardBtn" style="padding:10px; background:#ca8a04; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;">
+        🔄 Riavvia in WiFi Wizard
+      </button>
+
+      <button id="adminRegenTargaBtn" style="padding:10px; background:#9333ea; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;">
+        🎲 Rigenera Targa Dispositivo
+      </button>
+
+      <button id="adminCloseBtn" style="padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer; margin-top:10px;">
+        Chiudi Pannello
+      </button>
     </div>
+  </div>
 </div>
 
 <script>
 // ================================================================
-//  UUID E VARIABILI GLOBALI
+// GESTIONE EVENTI ADMIN LOGIN E PANNELLO
 // ================================================================
-const CONFIG_SVC_UUID = 'dddd0001-0000-1000-8000-00805f9b34fb';
-const HUB_SVC_UUID    = 'eeee0001-0000-1000-8000-00805f9b34fb';
-const RELAY_SVC_UUID  = 'aaaa0001-0000-1000-8000-00805f9b34fb';
-const RELAY_UUIDS = [
-    'aaaa0001-0000-1000-8000-00805f9b0001','aaaa0001-0000-1000-8000-00805f9b0002',
-    'aaaa0001-0000-1000-8000-00805f9b0003','aaaa0001-0000-1000-8000-00805f9b0004',
-    'aaaa0001-0000-1000-8000-00805f9b0005','aaaa0001-0000-1000-8000-00805f9b0006'
-];
-const CHAR_NAME_UUID  = 'dddd0001-0000-1000-8000-00805f9bffff';
-const CHAR_COUNT_UUID = 'dddd0001-0000-1000-8000-00805f9bfffa';
-const CHAR_RESET_UUID = 'dddd0001-0000-1000-8000-00805f9bfffe';
-const SNIFFER_UUID    = 'dddd0001-0000-1000-8000-00805f9baaaa';
+let introClicks = 0;
+let introTimer;
 
-let bleDevice=null, gattServer=null, activeService=null;
-let relayStates=[false,false,false,false,false,false];
-let relayCharacteristics=[];
-
-// Variabili per lo scanner
-let snifferCharacteristic = null;
-let isScanning = false;
-let scannedDevices = {};
-let macSearchQuery = "";
-let scannerToggleInFlight = false;
-
-// ================================================================
-//  DOM REFS
-// ================================================================
-const connectBtn           = document.getElementById('connectBtn');
-const disconnectBtn        = document.getElementById('disconnectBtn');
-const logEl                = document.getElementById('log');
-const logMobile            = document.getElementById('logMobile');
-const sysPanel             = document.getElementById('sysPanel');
-const dangerPanel          = document.getElementById('dangerPanel');
-const configSlotsWrapper   = document.getElementById('configSlotsWrapper');
-const hubPanel             = document.getElementById('hubPanel');
-const sensorGrid           = document.getElementById('sensorGrid');
-const relayGrid            = document.getElementById('relayGrid');
-const configSlotsContainer = document.getElementById('configSlotsContainer');
-const infoModal            = document.getElementById('infoModal');
-const scannerModal         = document.getElementById('scannerModal');
-
-// ================================================================
-//  LOG
-// ================================================================
-function toggleLog(side) {
-    const body = document.getElementById(side === 'desk' ? 'log-body-desk' : 'log-body-mob');
-    const icon = document.getElementById(side === 'desk' ? 'log-icon-desk' : 'log-icon-mob');
-    const hdr  = document.getElementById(side === 'desk' ? 'log-hdr-desk'  : 'log-hdr-mob');
-    const isOpen = body.classList.contains('open');
-    if (isOpen) {
-        body.classList.remove('open');
-        icon.classList.remove('open');
-        hdr.classList.remove('open');
-    } else {
-        body.classList.add('open');
-        icon.classList.add('open');
-        hdr.classList.add('open');
+document.getElementById('introTrigger').addEventListener('click', function() {
+    introClicks++;
+    clearTimeout(introTimer);
+    if(introClicks >= 5) {
+        document.getElementById('adminLoginOverlay').style.display = 'flex';
+        document.getElementById('adminPasswordInput').value = '';
+        document.getElementById('adminError').innerText = '';
+        document.getElementById('infoModal').classList.remove('open');
+        introClicks = 0;
     }
-}
-
-function clearLogFn(logId, previewId) {
-    document.getElementById(logId).innerHTML = '';
-    const prev = document.getElementById(previewId);
-    prev.textContent = '> Log pulito.';
-    prev.className = 'log-preview';
-}
-
-function addLog(msg, type='info') {
-    const cls    = type==='error'?'log-err':type==='success'?'log-ok':type==='rx'?'log-rx':type==='tx'?'log-tx':'';
-    const prefix = type==='rx'?'RX < ':type==='tx'?'TX > ':'> ';
-    const text   = prefix + msg;
-
-    ['log-preview', 'logMobile-preview'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = text;
-        el.className = 'log-preview' + (cls ? ' ' + cls : '');
-    });
-
-    [logEl, logMobile].forEach(el => {
-        if (!el) return;
-        const d = document.createElement('div');
-        if (cls) d.className = cls;
-        d.textContent = text;
-        el.prepend(d);
-    });
-}
-
-// ================================================================
-//  BLE COMPATIBILITY CHECK
-// ================================================================
-function checkBleSupport() {
-    const alertEl = document.getElementById('ble-alert');
-    const isIOS   = /iP(hone|od|ad)/.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isBrave = navigator.brave !== undefined;
-
-    if (isIOS) {
-        alertEl.style.display = 'block';
-        alertEl.innerHTML = `⚠ <strong>iOS non supporta Web Bluetooth.</strong><br>
-            Usa Android con Chrome/Edge/Brave, oppure un PC con Chrome.<br>
-            <a href="https://apps.apple.com/app/bluefy/id1492822055" target="_blank">→ Alternativa: app Bluefy su iOS</a>`;
-        connectBtn.disabled = true;
-        return false;
-    }
-    if (!navigator.bluetooth) {
-        const extraMsg = isBrave
-            ? `<br>Sei su <strong>Brave</strong>: vai su <code>brave://flags</code>, cerca <em>"bluetooth"</em> e imposta <strong>Web Bluetooth API → Enabled</strong>, poi riavvia Brave.`
-            : `<br>Usa <strong>Chrome</strong> o <strong>Edge</strong> su Android o PC. Firefox e Safari non sono supportati.`;
-        alertEl.style.display = 'block';
-        alertEl.innerHTML = `⚠ <strong>Web Bluetooth non disponibile.</strong>${extraMsg}`;
-        connectBtn.disabled = true;
-        return false;
-    }
-    alertEl.style.display = 'none';
-    return true;
-}
-
-// ================================================================
-//  STATUS
-// ================================================================
-function updateStatus(state, mode='') {
-    const dot = document.getElementById('statusDot');
-    const st  = document.getElementById('statusText');
-    const mt  = document.getElementById('modeText');
-
-    dot.className = 'status-dot';
-    if (state === 'connecting') {
-        dot.classList.add('connecting');
-        st.textContent = 'Connessione...';
-        st.style.color = '#fbbf24';
-        connectBtn.disabled = true;
-        connectBtn.textContent = 'Ricerca...';
-    } else if (state === 'connected') {
-        dot.classList.add('connected');
-        st.textContent = 'Connesso';
-        st.style.color = '#4ade80';
-        mt.textContent = mode === 'CONFIG' ? 'MODALITÀ CONFIGURAZIONE' : 'MODALITÀ OPERATIVA';
-        mt.style.color = mode === 'CONFIG' ? '#fbbf24' : '#93c5fd';
-        connectBtn.classList.add('hidden');
-        disconnectBtn.classList.remove('hidden');
-    } else {
-        st.textContent = 'Disconnesso';
-        st.style.color = '';
-        mt.textContent = '--';
-        mt.style.color = '';
-        connectBtn.disabled = false;
-        connectBtn.textContent = 'Connetti Dispositivo';
-        connectBtn.classList.remove('hidden');
-        disconnectBtn.classList.add('hidden');
-		document.getElementById('scannerBtn').classList.add('hidden');
-        sysPanel.classList.add('hidden');
-        dangerPanel.classList.add('hidden');
-        configSlotsWrapper.classList.add('hidden');
-        hubPanel.classList.add('hidden');
-        sensorGrid.innerHTML = '';
-        configSlotsContainer.innerHTML = '';
-        relayGrid.innerHTML = '';
-        relayCharacteristics = [];
-        
-        // Reset Scanner in caso di disconnessione
-        isScanning = false;
-        snifferCharacteristic = null;
-        document.getElementById('btn-toggle-scanner').innerHTML = "▶ Avvia Scansione Etere";
-        document.getElementById('btn-toggle-scanner').style.background = "var(--accent)";
-        document.getElementById('live-badge').innerHTML = "OFF";
-        document.getElementById('live-badge').style.background = "#64748b";
-    }
-}
-
-// ================================================================
-//  DISCONNECT / LOST CONNECTION
-// ================================================================
-function onDisconnected() {
-    addLog('Connessione persa. Nuova ricerca...', 'error');
-    updateStatus('disconnected');
-    bleDevice = null; gattServer = null; activeService = null;
-    setTimeout(() => { if (checkBleSupport()) connect(); }, 800);
-}
-
-// ================================================================
-//  CONNECT
-// ================================================================
-async function connect() {
-    if (!checkBleSupport()) return;
-    try {
-        updateStatus('connecting');
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [CONFIG_SVC_UUID] }, { services: [HUB_SVC_UUID] }],
-            optionalServices: [CONFIG_SVC_UUID, HUB_SVC_UUID, RELAY_SVC_UUID]
-        });
-        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-        gattServer = await bleDevice.gatt.connect();
-        const services = await gattServer.getPrimaryServices();
-        let mode = 'UNKNOWN';
-        for (const s of services) {
-            if (s.uuid === CONFIG_SVC_UUID)   { mode = 'CONFIG'; activeService = s; }
-            else if (s.uuid === HUB_SVC_UUID) { mode = 'HUB';    activeService = s; }
-        }
-        if (mode === 'CONFIG')      await setupConfigMode();
-        else if (mode === 'HUB')    await setupHubMode();
-        else throw new Error('Nessun servizio compatibile trovato.');
-        updateStatus('connected', mode);
-        addLog(`Connesso: ${mode}`, 'success');
-    } catch (error) {
-        addLog(`Errore: ${error.message}`, 'error');
-        updateStatus('disconnected');
-    }
-}
-
-// ================================================================
-//  CONFIG MODE
-// ================================================================
-async function setupConfigMode() {
-	document.getElementById('scannerBtn').classList.remove('hidden');
-    sysPanel.classList.remove('hidden');
-    dangerPanel.classList.remove('hidden');
-    configSlotsWrapper.classList.remove('hidden');
-    hubPanel.classList.add('hidden');
-    configSlotsContainer.innerHTML = '';
-    try {
-        // --- INIZIO CONNESSIONE SCANNER ---
-        try {
-            snifferCharacteristic = await activeService.getCharacteristic(SNIFFER_UUID);
-            await snifferCharacteristic.startNotifications();
-            snifferCharacteristic.addEventListener('characteristicvaluechanged', handleSnifferData);
-        } catch (e) {
-            console.warn("Sniffer non trovato (vecchio firmware?)", e);
-        }
-        // --- FINE CONNESSIONE SCANNER ---
-
-        const countChar = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-        const count = parseInt(new TextDecoder().decode(await countChar.readValue()));
-        document.getElementById('sensorCountInput').value = count;
-        addLog(`Config: ${count} sensori.`, 'rx');
-        try {
-            const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-            document.getElementById('hubNameInput').value = new TextDecoder().decode(await nameChar.readValue());
-        } catch(e) {}
-        for (let i = 1; i <= count; i++) {
-            createConfigSlot(i);
-            await readConfigSlotValues(i);
-            await new Promise(r => setTimeout(r, 50));
-        }
-        try {
-            const resetChar = await activeService.getCharacteristic(CHAR_RESET_UUID);
-            if (resetChar.properties.notify) {
-                await resetChar.startNotifications();
-                resetChar.addEventListener('characteristicvaluechanged', (e) => {
-                    if (new TextDecoder().decode(e.target.value) === "0") {
-                        document.getElementById('resetFeedback').textContent = 'Reset completato!';
-                        document.getElementById('resetFeedback').style.color = '#4ade80';
-                        addLog('Factory Reset confermato.', 'success');
-                    }
-                });
-            }
-        } catch(e) {}
-    } catch(e) { addLog('Errore config: ' + e.message, 'error'); }
-}
-
-// ================================================================
-//  HUB MODE
-// ================================================================
-async function setupHubMode() {
-	document.getElementById('scannerBtn').classList.add('hidden');
-    sysPanel.classList.add('hidden');
-    dangerPanel.classList.add('hidden');
-    configSlotsWrapper.classList.add('hidden');
-    hubPanel.classList.remove('hidden');
-    sensorGrid.innerHTML = '';
-    relayGrid.innerHTML = '';
-    relayCharacteristics = [];
-    document.getElementById('liveHubName').textContent = '--';
-
-    try {
-        const relayService = await gattServer.getPrimaryService(RELAY_SVC_UUID);
-        addLog('Servizio Relè trovato.', 'success');
-        for (let i = 0; i < 6; i++) {
-            try {
-                const char = await relayService.getCharacteristic(RELAY_UUIDS[i]);
-                relayCharacteristics[i] = char;
-                createRelayButton(i);
-                try {
-                    await char.startNotifications();
-                    char.addEventListener('characteristicvaluechanged', (event) => {
-                        updateRelayUI(i, new TextDecoder().decode(event.target.value) === "1");
-                    });
-                } catch(e) {}
-                try { updateRelayUI(i, new TextDecoder().decode(await char.readValue()) === "1"); } catch(e) {}
-            } catch(e) {}
-        }
-    } catch(e) { addLog('Nessun servizio Relè.', 'error'); }
-
-    try {
-        try {
-            const nc = await activeService.getCharacteristic(CHAR_NAME_UUID);
-            document.getElementById('liveHubName').textContent = new TextDecoder().decode(await nc.readValue());
-        } catch(e) { document.getElementById('liveHubName').textContent = 'Hub Device'; }
-
-        const characteristics = await activeService.getCharacteristics();
-        let sensorCount = 0;
-        characteristics.forEach(c => { if (c.uuid !== CHAR_NAME_UUID) sensorCount++; });
-        document.getElementById('hubSensorCountBadge').textContent = `${sensorCount} Sensori`;
-
-        let sIdx = 0;
-        for (let i = 0; i < characteristics.length; i++) {
-            const char = characteristics[i];
-            if (char.uuid === CHAR_NAME_UUID) continue;
-            sIdx++;
-            const cid = sIdx;
-            createSensorCard(cid);
-            try {
-                await char.startNotifications();
-                char.addEventListener('characteristicvaluechanged', (e) => {
-                    const val = new TextDecoder().decode(e.target.value);
-                    updateSensorCard(cid, val);
-                    addLog(`S${cid}: ${val}`, 'rx');
-                });
-                updateSensorCard(cid, new TextDecoder().decode(await char.readValue()));
-                await new Promise(r => setTimeout(r, 50));
-            } catch(e) {}
-        }
-    } catch(e) { addLog('Err Hub: ' + e.message, 'error'); }
-}
-
-// ================================================================
-//  PAYLOAD PARSING
-// ================================================================
-const FIELD_META = {
-    temp:    { label:'Temperatura', unit:'°C',  icon:'T' },
-    hum:     { label:'Umidità',     unit:'%',   icon:'H' },
-    pir:     { label:'Presenza',    unit:'',    icon:'P' },
-    mov:     { label:'Movimento',   unit:'',    icon:'M' },
-    mag:     { label:'Magnete',     unit:'',    icon:'B' },
-    di:      { label:'Ingresso',    unit:'',    icon:'D' },
-    ax:      { label:'Acc X',       unit:'mg',  icon:'X' },
-    ay:      { label:'Acc Y',       unit:'mg',  icon:'Y' },
-    az:      { label:'Acc Z',       unit:'mg',  icon:'Z' },
-    cnt:     { label:'Contatore',   unit:'',    icon:'#' },
-    rssi:    { label:'RSSI',        unit:'dBm', icon:'R' },
-    ela_id:  { label:'ELA ID',      unit:'',    icon:'E' },
-    mfr_cid: { label:'Mfr CID',     unit:'',    icon:'F' },
-    raw:     { label:'Raw HEX',     unit:'',    icon:'~' },
-};
-
-function parsePayload(rawString) {
-    const fields = {};
-    let isConnected = false, isOffline = false, isNotConfig = false;
-
-    // Se la stringa contiene dati (non è un errore o offline)
-    if (rawString.includes('=') && !rawString.includes('Disconnected') && !rawString.includes('Offline')) {
-        isConnected = true;
-        
-        // Dividiamo la stringa in parti (mac=...; name=...; temp=...; rssi=...)
-        const parts = rawString.split(';');
-        parts.forEach(pair => {
-            const eq = pair.indexOf('=');
-            if (eq < 0) return;
-            const k = pair.substring(0, eq).trim();
-            const v = pair.substring(eq + 1).trim();
-            if (k) fields[k] = v;
-        });
-    } else if (rawString.includes('Disconnected') || rawString.includes('Offline')) {
-        isOffline = true;
-    } else {
-        isNotConfig = true;
-    }
-    return { isConnected, isOffline, isNotConfig, fields };
-}
-// ================================================================
-//  SENSOR CARDS
-// ================================================================
-function createSensorCard(id) {
-    const div = document.createElement('div');
-    div.id = `sensor-card-${id}`;
-    div.className = 'sensor-card';
-    div.innerHTML = `
-        <div class="sensor-header">
-            <span class="sensor-title">Sensore ${id}</span>
-            <span id="sensor-status-${id}" class="status-badge">WAIT</span>
-        </div>
-        <div id="sensor-fields-${id}" class="field-grid"></div>
-    `;
-    sensorGrid.appendChild(div);
-}
-
-function updateSensorCard(id, rawString) {
-    const card     = document.getElementById(`sensor-card-${id}`);
-    const statusEl = document.getElementById(`sensor-status-${id}`);
-    const fieldsEl = document.getElementById(`sensor-fields-${id}`);
-    const titleEl  = card ? card.querySelector('.sensor-title') : null;
-    
-    if (!card) return;
-    const { isConnected, isOffline, fields } = parsePayload(rawString);
-    
-    if (isConnected) {
-        card.className = 'sensor-card online';
-        statusEl.textContent = 'ONLINE'; 
-        statusEl.className = 'status-badge online';
-        
-        // RIPRISTINO TITOLO CON NUMERO SENSORE
-        if (titleEl) titleEl.textContent = `Sensore ${id}`;
-
-        fieldsEl.innerHTML = '';
-        
-        // BOX INFO (MAC e NOME) - Rimane come intestazione dei dati
-        const infoRow = document.createElement('div');
-        infoRow.style = "grid-column: 1 / -1; background: #1e293b; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #334155;";
-        infoRow.innerHTML = `
-            <div style="font-size: 0.55rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Device Info</div>
-            <div style="font-family: monospace; font-size: 0.75rem; color: #4ade80; display: flex; justify-content: space-between;">
-                <span>${fields.mac || 'N/A'}</span>
-                <span style="color: #64748b;">${fields.name || '---'}</span>
-            </div>
-        `;
-        fieldsEl.appendChild(infoRow);
-
-        const keys = Object.keys(fields);
-        const skipKeys = ['mac', 'name']; 
-        
-        keys.forEach(k => {
-            if (skipKeys.includes(k)) return; 
-            
-            const meta = FIELD_META[k] || { label: k, unit: '', icon: '·' };
-            const pill = document.createElement('div');
-            pill.className = 'field-pill';
-            pill.innerHTML = `
-                <div class="field-key">[${meta.icon}] ${meta.label}</div>
-                <div class="field-val">${fields[k]}<span class="field-unit">${meta.unit}</span></div>
-            `;
-            fieldsEl.appendChild(pill);
-        });
-    } else if (isOffline) {
-        card.className = 'sensor-card offline';
-        statusEl.textContent = 'OFFLINE'; 
-        statusEl.className = 'status-badge offline';
-        if (titleEl) titleEl.textContent = `Sensore ${id}`;
-        fieldsEl.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">In attesa del beacon...</span>';
-    } else {
-        card.className = 'sensor-card uncfg';
-        statusEl.textContent = 'NON CFG'; 
-        statusEl.className = 'status-badge';
-        if (titleEl) titleEl.textContent = `Sensore ${id}`;
-        fieldsEl.innerHTML = '';
-    }
-}
-
-// ================================================================
-//  RELAY
-// ================================================================
-
-function createRelayButton(index) {
-    const btn = document.createElement('button');
-    btn.id = `relay-btn-${index}`;
-    btn.className = 'relay-btn';
-    btn.onclick = () => toggleRelay(index);
-    btn.innerHTML = `
-        <div id="relay-led-${index}" class="relay-led"></div>
-        <div class="relay-label">R${index + 1}</div>
-    `;
-    relayGrid.appendChild(btn);
-}
-	
-async function toggleRelay(index) {
-    if (!relayCharacteristics[index]) return;
-    const ns = !relayStates[index];
-    updateRelayUI(index, ns);
-    try {
-        await relayCharacteristics[index].writeValue(new TextEncoder().encode(ns ? "1" : "0"));
-        addLog(`Relè ${index + 1} → ${ns ? 1 : 0}`, 'tx');
-    } catch(e) {
-        addLog(`Err Relè ${index + 1}: ${e.message}`, 'error');
-        updateRelayUI(index, !ns);
-    }
-}
-function updateRelayUI(index, state) {
-    relayStates[index] = state;
-    const btn = document.getElementById(`relay-btn-${index}`);
-    const led = document.getElementById(`relay-led-${index}`);
-    if (!btn) return;
-    btn.className = state ? 'relay-btn on' : 'relay-btn';
-    led.className = state ? 'relay-led on' : 'relay-led';
-}
-
-// ================================================================
-//  CONFIG SLOTS
-// ================================================================
-function getConfigSlotUUID(index, type) {
-    const padding = index < 10 ? "00000" : "0000";
-    return `00000000-0000-0000-0000-00000${padding}${index}${type}`;
-}
-
-function createConfigSlot(index) {
-    const div = document.createElement('div');
-    div.className = 'config-slot';
-    div.innerHTML = `
-        <span class="slot-badge">SLOT ${index}</span>
-        
-        <div style="margin-top:0.3rem; margin-bottom:1rem;">
-            <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4ade80;">MAC Address Sensore</label>
-            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-                <input type="text" id="mac-address-${index}" placeholder="In attesa..." maxlength="17"
-                    class="input-text" style="flex:1;text-transform:uppercase;">
-                <button onclick="saveSlotMAC(${index})" id="mac-save-btn-${index}" class="btn btn-secondary btn-sm">SALVA</button>
-            </div>
-            <p class="hint">Formato: AA:BB:CC:11:22:33</p>
-        </div>
-
-        <div>
-            <label style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#fbbf24;">Regola di decodifica</label>
-            <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
-                <input type="text" id="rule-data-${index}" placeholder="Es: SVC,181A,6,2,S100,temp" maxlength="100"
-                    class="input-text" style="flex:1;font-family:monospace;">
-                <button onclick="saveSlotRule(${index})" id="rule-save-btn-${index}" class="btn btn-secondary btn-sm">SALVA</button>
-            </div>
-            <p class="hint">Sintassi: FONTE,ID,OFFSET,LUNG,OPERATORE,NOME (usa prefissi S, B, %)</p>
-        </div>
-    `;
-    configSlotsContainer.appendChild(div);
-}
-
-async function readConfigSlotValues(index) {
-    const macInput = document.getElementById(`mac-address-${index}`);
-    const ruleInput = document.getElementById(`rule-data-${index}`);
-    
-    macInput.placeholder = 'Lettura...';
-    if(ruleInput) ruleInput.placeholder = 'Lettura...';
-
-    // 1. Lettura MAC
-    try {
-        const cMac = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
-        const vMac = new TextDecoder().decode(await cMac.readValue());
-        macInput.value = vMac.length >= 12 ? vMac.toUpperCase() : '';
-        if (!macInput.value) macInput.placeholder = 'Slot Vuoto';
-    } catch(e) { macInput.placeholder = 'Errore Lettura'; }
-
-    // 2. Lettura Regola
-    if(ruleInput) {
-        try {
-            const cRule = await activeService.getCharacteristic(getConfigSlotUUID(index, 3));
-            const vRule = new TextDecoder().decode(await cRule.readValue());
-            ruleInput.value = vRule;
-            if (!ruleInput.value) ruleInput.placeholder = 'Nessuna regola impostata';
-        } catch(e) { ruleInput.placeholder = 'Errore Lettura'; }
-    }
-}
-
-window.saveSlotMAC = async function(index) {
-    let val = document.getElementById(`mac-address-${index}`).value.trim().toUpperCase();
-    if (!/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/.test(val))
-        return alert('⚠ Formato MAC non valido!\nEs: AA:BB:CC:DD:EE:FF');
-    val = val.replace(/-/g, ':');
-    document.getElementById(`mac-address-${index}`).value = val;
-    try {
-        const char = await activeService.getCharacteristic(getConfigSlotUUID(index, 2));
-        addLog(`Scrittura MAC Slot ${index}...`, 'tx');
-        await char.writeValue(new TextEncoder().encode(val.toLowerCase()));
-        addLog(`Slot ${index}: ${val}`, 'success');
-        const btn = document.getElementById(`mac-save-btn-${index}`);
-        const origClass = btn.className;
-        btn.textContent = '✔ OK'; btn.style.background = '#16a34a';
-        setTimeout(() => { btn.className = origClass; btn.textContent = 'SALVA'; btn.style.background = ''; }, 1500);
-    } catch(e) { addLog(`Err Slot ${index}: ${e.message}`, 'error'); }
-};
-
-window.saveSlotRule = async function(index) {
-    let val = document.getElementById(`rule-data-${index}`).value.trim();
-    try {
-        const char = await activeService.getCharacteristic(getConfigSlotUUID(index, 3));
-        addLog(`Scrittura Regola Slot ${index}...`, 'tx');
-        await char.writeValue(new TextEncoder().encode(val));
-        addLog(`Regola ${index} salvata`, 'success');
-        
-        const btn = document.getElementById(`rule-save-btn-${index}`);
-        const origClass = btn.className;
-        btn.textContent = '✔ OK'; btn.style.background = '#16a34a';
-        setTimeout(() => { btn.className = origClass; btn.textContent = 'SALVA'; btn.style.background = ''; }, 1500);
-    } catch(e) { addLog(`Err Regola ${index}: ${e.message}`, 'error'); }
-};
-
-// ================================================================
-//  SAVE NAME
-// ================================================================
-async function saveHubName() {
-    const val = document.getElementById('hubNameInput').value.trim();
-    if (!val) return alert('Inserisci un nome valido');
-    try {
-        const c = await activeService.getCharacteristic(CHAR_NAME_UUID);
-        await c.writeValue(new TextEncoder().encode(val));
-        addLog('Nome salvato!', 'success');
-    } catch(e) { addLog('Err nome: ' + e.message, 'error'); }
-}
-
-// ================================================================
-//  SAVE COUNT
-// ================================================================
-async function saveSensorCount() {
-    const val = document.getElementById('sensorCountInput').value;
-    if (!val) return;
-    const n = parseInt(val);
-    if (n < 1 || n > 10) return alert('Valore 1–10 sensori.');
-    try {
-        const c = await activeService.getCharacteristic(CHAR_COUNT_UUID);
-        c.writeValue(new TextEncoder().encode(val)).catch(() => {});
-        addLog('Salvataggio inviato. Disconnessione...', 'success');
-        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
-        bleDevice.gatt.disconnect();
-        updateStatus('disconnected');
-        bleDevice = null; gattServer = null; activeService = null;
-        await new Promise(r => setTimeout(r, 300));
-        if (checkBleSupport()) connect();
-    } catch(e) { addLog('Err count: ' + e.message, 'error'); }
-}
-
-// ================================================================
-//  FACTORY RESET
-// ================================================================
-async function performReset() {
-    if (!confirm('Cancellare tutti i dispositivi e le regole di decodifica?\n(Nome hub e configurazione Wi-Fi NON vengono toccati)')) return;
-    try {
-        const c = await activeService.getCharacteristic(CHAR_RESET_UUID);
-        c.writeValue(new TextEncoder().encode("1")).catch(() => {});
-        addLog('Reset inviato. Disconnessione...', 'tx');
-        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
-        bleDevice.gatt.disconnect();
-        updateStatus('disconnected');
-        bleDevice = null; gattServer = null; activeService = null;
-        document.getElementById('resetFeedback').textContent = '';
-        await new Promise(r => setTimeout(r, 300));
-        if (checkBleSupport()) connect();
-    } catch(e) { addLog('Err reset: ' + e.message, 'error'); }
-}
-
-// ================================================================
-//  LOGICA SCANNER BLE (MIGLIORATA)
-// ================================================================
-let pinnedMac = null; // Memorizza il MAC isolato
-
-function setScannerUiState(scanning) {
-    const btn = document.getElementById('btn-toggle-scanner');
-    const badge = document.getElementById('live-badge');
-
-    btn.innerHTML = scanning ? "■ Ferma Scansione" : "▶ Avvia Scansione Etere";
-    btn.style.background = scanning ? "var(--danger)" : "var(--accent)";
-    badge.innerHTML = scanning ? "LIVE" : "OFF";
-    badge.style.background = scanning ? "var(--danger)" : "#64748b";
-}
-
-function renderScannerControls() {
-    const searchInput = document.getElementById('scanner-mac-search');
-    const searchBtn = document.getElementById('btn-search-mac');
-    const clearBtn = document.getElementById('btn-clear-search-mac');
-    
-    // Rimuoviamo la dipendenza da isScanning per mantenere tutto sempre abilitato
-    searchInput.disabled = false;
-    searchBtn.disabled = false;
-    clearBtn.disabled = false;
-    searchInput.placeholder = "Cerca MAC o Nome (intero o parziale)";
-}
-
-function applyMacSearch() {
-    const searchInput = document.getElementById('scanner-mac-search');
-    macSearchQuery = searchInput.value.trim().toUpperCase();
-    renderScannerList();
-}
-
-function clearMacSearch() {
-    const searchInput = document.getElementById('scanner-mac-search');
-    searchInput.value = "";
-    macSearchQuery = "";
-    renderScannerList();
-}
-
-async function toggleScanner() {
-    if (!snifferCharacteristic) {
-        alert("Devi connetterti all'Hub (Modalità Configurazione) per usare lo scanner!");
-        return;
-    }
-    if (scannerToggleInFlight) return;
-    scannerToggleInFlight = true;
-    
-    if (!isScanning) {
-        scannedDevices = {}; 
-        pinnedMac = null; // Resetta il focus
-        clearMacSearch();
-        renderScannerList();
-        try {
-            await snifferCharacteristic.writeValue(new TextEncoder().encode("1"));
-            isScanning = true;
-            setScannerUiState(true);
-            addLog("Scanner BLE avviato", "tx");
-        } catch(e) { addLog("Errore scanner: " + e.message, "error"); }
-    } else {
-        // STOP logic
-        isScanning = false;           // 1. Mettiamo in pausa immediata la ricezione (grazie alla Modifica 1)
-        setScannerUiState(false);     // 2. Spegniamo la UI subito
-        
-        try {
-            await snifferCharacteristic.writeValue(new TextEncoder().encode("0"));
-            addLog("Scanner BLE fermato", "tx");
-        } catch(e) {
-            // Se c'è congestione (es. GATT in progress), NON riaccendiamo la UI.
-            // Ci limitiamo a loggare l'errore in background.
-            addLog("Forzatura stop (congestione BLE)...", "warn");
-            
-            // Opzionale: Riprova a inviare lo stop dopo 100ms quando il canale si libera
-            setTimeout(() => {
-                if (!isScanning && snifferCharacteristic) {
-                    snifferCharacteristic.writeValue(new TextEncoder().encode("0")).catch(err => console.log(err));
-                }
-            }, 100);
-        }
-    }
-
-    renderScannerControls();
-    scannerToggleInFlight = false;
-}
-
-function handleSnifferData(event) {
-    if (!isScanning) return;
-    let value = new TextDecoder().decode(event.target.value);
-    let parts = value.split(';');
-    
-    if (parts.length >= 3) {
-        let mac = parts[0];
-        let rssi = parts[1];
-        
-        // 1. Prendo ESATTAMENTE l'indice 2 per i dati, senza unire il resto
-        let payload = parts[2]; 
-        
-        // 2. Prendo l'indice 3 per il nome
-        let devName = parts.length > 3 && parts[3] !== "" ? parts[3] : "Sconosciuto";
-        
-        // Salvo il payload precedente per confrontarlo
-        let prevPayload = scannedDevices[mac] ? scannedDevices[mac].payload : payload;
-
-        const previous = scannedDevices[mac] || {};
-        
-        // 3. Salvo i dati nell'oggetto
-        scannedDevices[mac] = { 
-            mac: mac,          
-            name: devName,     
-            rssi: parseInt(rssi), 
-            payload: payload, 
-            prevPayload: prevPayload,
-            changedOffsets: previous.changedOffsets || [],
-            time: new Date().toLocaleTimeString() 
-        };
-        
-        renderScannerList();
-    }
-}
-
-function parseSnifferPayload(payload) {
-    const metadataKeys = new Set(['mac', 'fonte', 'source', 'src', 'id']);
-    const normalizedPayload = payload.replace(/[\r\n]+/g, ';');
-    const rawTokens = normalizedPayload.split(/[;|]/).map(t => t.trim()).filter(Boolean);
-    const expandedTokens = rawTokens.flatMap(token => token.split(/(?=(?:MFR|SVC)=)/i).map(t => t.trim()).filter(Boolean));
-
-    let type = 'N/A';
-    let id = '0000';
-    let rawHex = '';
-    const records = [];
-
-    rawTokens.forEach(token => {
-        const upperToken = token.toUpperCase();
-
-        if (upperToken.startsWith('MFR=')) {
-            const data = token.substring(4).replace(/[^0-9a-f]/gi, '').toUpperCase();
-            if (data.length >= 4) {
-                const mfrId = data.substring(0, 4);
-                const mfrData = data.substring(4);
-                if (type === 'N/A') type = 'MFR';
-                if (id === '0000') id = mfrId;
-                rawHex += mfrData;
-                records.push({ type: 'MFR', id: mfrId, rawHex: mfrData });
-            }
-            return;
-        }
-
-        if (upperToken.startsWith('SVC=')) {
-            if (type === 'N/A') type = 'SVC';
-
-            // Supporta vari formati ricevuti dall'hub, ad esempio:
-            // SVC=2A6E=6C0A | SVC=2A6E:6C0A | SVC=2A6E6C0A
-            const payloadBody = token.substring(4).trim();
-            const parts = payloadBody.split(/[=:,]/).map(p => p.trim()).filter(Boolean);
-
-            let svcId = '';
-            let data = '';
-
-            if (parts.length >= 2) {
-                svcId = (parts[0] || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
-                data = parts.slice(1).join('').replace(/[^0-9a-f]/gi, '').toUpperCase();
-            } else {
-                const compact = payloadBody.replace(/[^0-9a-f]/gi, '').toUpperCase();
-                if (compact.length > 4) {
-                    svcId = compact.substring(0, 4);
-                    data = compact.substring(4);
-                } else {
-                    svcId = compact;
-                    data = '';
-                }
-            }
-
-            if (id === '0000' && svcId) id = svcId.substring(0, 4);
-            if (data) {
-                rawHex += data;
-                records.push({ type: 'SVC', id: (svcId || '0000').substring(0, 4), rawHex: data });
-            }
-            return;
-        }
-
-        const eqIdx = token.indexOf('=');
-        if (eqIdx > 0) {
-            const key = token.substring(0, eqIdx).trim().toLowerCase();
-            if (metadataKeys.has(key)) return;
-            const data = token.substring(eqIdx + 1).replace(/[^0-9a-f]/gi, '').toUpperCase();
-            rawHex += data;
-            if (data) records.push({ type: 'RAW', id: key.toUpperCase(), rawHex: data });
-        }
-    });
-
-    if (!records.length && rawHex) {
-        records.push({ type, id, rawHex });
-    }
-
-    return { type, id, rawHex, records };
-}
-
-// Funzione globale per isolare un sensore
-window.togglePin = function(mac) {
-    pinnedMac = (pinnedMac === mac) ? null : mac;
-    renderScannerList();
-};
-
-
-// Variabile per tenere in memoria la regola attuale
-let currentGeneratedRule = "";
-
-// Funzione globale per generare e copiare la regola
-window.copyRule = function(type, id, offset) {
-    currentGeneratedRule = `${type},${id},${offset},1,1,dato_nuovo`;
-    
-    // Scrive la regola nel riquadro
-    document.getElementById('generatedRuleText').textContent = currentGeneratedRule;
-    
-    // Resetta l'aspetto del bottone di copia
-    const copyBtn = document.getElementById('execCopyBtn');
-    copyBtn.innerHTML = "Copia regola";
-    copyBtn.style.background = "var(--accent)";
-    
-    // Apre il modal
-    document.getElementById('ruleModal').classList.add('open');
-};
-
-// Funzione per copiare il MAC Address con feedback visivo sul pulsante
-window.copyMac = function(btnElement, macAddress) {
-    navigator.clipboard.writeText(macAddress).then(() => {
-        // Salviamo l'aspetto originale
-        const originalText = btnElement.innerHTML;
-        const originalBg = btnElement.style.background;
-        
-        // Cambiamo l'aspetto per dare feedback
-        btnElement.innerHTML = "✔ Copiato!";
-        btnElement.style.background = "var(--success)";
-        btnElement.style.color = "#ffffff";
-        
-        // Ripristiniamo dopo 1 secondo
-        setTimeout(() => {
-            btnElement.innerHTML = originalText;
-            btnElement.style.background = originalBg;
-            btnElement.style.color = originalColor;
-        }, 1000);
-    }).catch(err => {
-        console.error("Errore durante la copia del MAC: ", err);
-    });
-};
-
-function renderScannerList() {
-    const list = document.getElementById("scanner-list");
-    let devices = Object.keys(scannedDevices).map(mac => ({mac, ...scannedDevices[mac]}));
-    
-    // Applica il filtro se c'è un MAC "Pinnato"
-    if (pinnedMac) {
-        devices = devices.filter(d => d.mac === pinnedMac);
-    } else {
-        devices.sort((a, b) => b.rssi - a.rssi); // Più vicini prima
-    }
-
-    if (macSearchQuery) {
-        devices = devices.filter(d => {
-            // Controlla se la stringa cercata è nel MAC
-            const matchMac = d.mac.toUpperCase().includes(macSearchQuery.toUpperCase());
-            
-            // Controlla se la stringa cercata è nel Nome (assicurandosi prima che il nome esista)
-            const matchName = d.name && d.name.toUpperCase().includes(macSearchQuery.toUpperCase());
-            
-            // Ritorna true (mostra il dispositivo) se almeno una delle due condizioni è vera
-            return matchMac || matchName;
-        });
-    }
-
-    if (devices.length === 0) {
-        // Ho cambiato la dicitura da 'Nessun MAC' a 'Nessun dispositivo'
-        list.innerHTML = `<div style="text-align: center; color: var(--muted); padding: 20px;">${macSearchQuery ? 'Nessun dispositivo trovato con il filtro inserito.' : 'In attesa di segnali...'}</div>`;
-        return;
-    }
-
-    list.innerHTML = devices.map(dev => {
-        const parsedCurrent = parseSnifferPayload(dev.payload);
-        const parsedPrev = parseSnifferPayload(dev.prevPayload || "");
-        const currentRecords = parsedCurrent.records || [];
-        const prevRecords = parsedPrev.records || [];
-
-        if (!dev.changedOffsets || Array.isArray(dev.changedOffsets)) dev.changedOffsets = {};
-
-        const recordsHtml = currentRecords.map((record, recordIdx) => {
-            const prevRecord = prevRecords[recordIdx] || { rawHex: '' };
-            const type = record.type;
-            const id = record.id;
-            const rawHex = record.rawHex;
-            const prevHex = prevRecord.rawHex || '';
-            const byteLen = rawHex.length / 2;
-            let gridHtml = '';
-
-            for (let i = 0; i < byteLen; i++) {
-                const byteStr = rawHex.substring(i * 2, i * 2 + 2);
-                const prevByteStr = prevHex.substring(i * 2, i * 2 + 2);
-                const offsetKey = `${recordIdx}:${type}:${id}:${i}`;
-                const isChanged = (byteStr !== prevByteStr) && (prevHex !== '');
-
-                if (isChanged) dev.changedOffsets[offsetKey] = true;
-
-                const hasEverChanged = Boolean(dev.changedOffsets[offsetKey]);
-                const valClass = hasEverChanged ? 'radar-byte-val changed' : 'radar-byte-val';
-
-                gridHtml += `
-                    <div class="radar-byte" onclick="copyRule('${type}', '${id}', ${i})" title="Clicca per copiare regola per OFFSET ${i}">
-                        <div class="radar-byte-header">${i}</div>
-                        <div class="${valClass}">${byteStr}</div>
-                    </div>
-                `;
-            }
-
-            return `
-            <div style="border:1px solid #1e293b; border-radius:6px; padding:8px; margin-bottom:8px; background:#020617;">
-                <div style="display:flex; gap:12px; font-size:0.75rem; margin-bottom: 8px;">
-                    <div><span style="color:#a78bfa; font-weight:bold; font-size:0.65rem;">TYPE:</span> <span style="font-family:monospace;">${type}</span></div>
-                    <div><span style="color:#fbbf24; font-weight:bold; font-size:0.65rem;">ID:</span> <span style="font-family:monospace; color:#fde047;">${id}</span></div>
-                    <div><span style="color:#4ade80; font-weight:bold; font-size:0.65rem;">LEN:</span> <span style="font-family:monospace;">${byteLen}</span> byte</div>
-                </div>
-                <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; margin-bottom:4px; font-weight:bold;">Data (Clicca su un byte per la regola)</div>
-                <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                    ${gridHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
-                </div>
-            </div>`;
-        }).join('');
-
-        return `
-        <div style="border: 1px solid ${pinnedMac === dev.mac ? 'var(--accent)' : 'var(--border)'}; padding: 12px; border-radius: 8px; background: #0f172a; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-					
-			<div style="display:flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px;">
-				<div style="display:flex; align-items:center; gap:8px;">
-					
-					<div style="display:flex; flex-direction:column;">
-						<span style="font-family:monospace; font-size:0.9rem; color:var(--text);">${dev.mac}</span>
-						<span style="font-size:0.75rem; color:#38bdf8; font-weight:bold;">${dev.name && dev.name !== 'Sconosciuto' ? dev.name : 'Senza nome'}</span>
-					</div>
-					<button class="btn-pin ${pinnedMac === dev.mac ? 'active' : ''}" onclick="togglePin('${dev.mac}')">
-						${pinnedMac === dev.mac ? 'Mostra Tutti' : 'Isola Sensore'}
-					</button>
-					
-					<button class="btn-pin" onclick="event.stopPropagation(); copyMac(this, '${dev.mac}')">
-						Copia MAC
-					</button>
-				</div>
-				<span style="color: ${dev.rssi > -70 ? '#4ade80' : '#f87171'}; font-weight:bold; margin-top:4px;">${dev.rssi} dBm</span>
-			</div>
-
-			${recordsHtml || '<span style="color:#64748b; font-style:italic;">Nessun dato (Payload vuoto)</span>'}
-
-			<div style="font-size: 0.7rem; color: var(--muted); text-align: right;">
-				⏱ ${dev.time}
-			</div>
-		</div>
-        `;
-    }).join('');
-}
-
-// ================================================================
-//  EVENTI
-// ================================================================
-connectBtn.addEventListener('click', connect);
-disconnectBtn.addEventListener('click', () => {
-    if (bleDevice && bleDevice.gatt.connected) {
-        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
-        bleDevice.gatt.disconnect();
-    }
-    updateStatus('disconnected');
-    bleDevice = null; gattServer = null; activeService = null;
-});
-document.getElementById('saveCountBtn').addEventListener('click', saveSensorCount);
-document.getElementById('saveNameBtn').addEventListener('click', saveHubName);
-document.getElementById('resetBtn').addEventListener('click', performReset);
-
-// Apertura/Chiusura Info
-document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('open'));
-document.getElementById('closeModalBtn').addEventListener('click', () => infoModal.classList.remove('open'));
-infoModal.addEventListener('click', (e) => { if (e.target === infoModal) infoModal.classList.remove('open'); });
-
-// Apertura/Chiusura Scanner
-document.getElementById('scannerBtn').addEventListener('click', () => scannerModal.classList.add('open'));
-document.getElementById('closeScannerBtn').addEventListener('click', async () => {
-    scannerModal.classList.remove('open');
-    if (isScanning) await toggleScanner();
-});
-scannerModal.addEventListener('click', async (e) => { 
-    if (e.target === scannerModal) {
-        scannerModal.classList.remove('open');
-        if (isScanning) await toggleScanner();
-    } 
-});
-document.getElementById('btn-toggle-scanner').addEventListener('click', toggleScanner);
-document.getElementById('btn-search-mac').addEventListener('click', applyMacSearch);
-document.getElementById('btn-clear-search-mac').addEventListener('click', clearMacSearch);
-document.getElementById('scanner-mac-search').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') applyMacSearch();
+    introTimer = setTimeout(() => { introClicks = 0; }, 2000);
 });
 
-// Esecuzione copia negli appunti
-document.getElementById('execCopyBtn').addEventListener('click', () => {
-    navigator.clipboard.writeText(currentGeneratedRule).then(() => {
-        const btn = document.getElementById('execCopyBtn');
-        btn.innerHTML = "✔ Regola Copiata!";
-        btn.style.background = "var(--success)"; // Diventa verde per dare feedback
-        
-        // Chiude automaticamente il popup dopo 1 secondo
-        setTimeout(() => {
-            document.getElementById('ruleModal').classList.remove('open');
-        }, 1000);
-    }).catch(err => {
-        alert("Errore nella copia: " + err);
-    });
+document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
+    document.getElementById('adminLoginOverlay').style.display = 'none';
 });
 
-// Apertura/Chiusura Rule Modal
-const ruleModal = document.getElementById('ruleModal');
-document.getElementById('closeRuleModalBtn').addEventListener('click', () => ruleModal.classList.remove('open'));
-ruleModal.addEventListener('click', (e) => { 
-    if (e.target === ruleModal) ruleModal.classList.remove('open'); 
-});
-
-// ================================================================
-//  INIT
-// ================================================================
-checkBleSupport();
-setScannerUiState(false);
-renderScannerControls();
-
-// --- ADMIN: tutto in DOMContentLoaded per evitare problemi di scope ---
-document.addEventListener('DOMContentLoaded', function() {
-  let introClickCount = 0;
-  let introClickTimer = null;
-
-  document.getElementById('adminWizardBtn').addEventListener('click', function() {
-  if (!confirm('Riavviare il Wizard WiFi? Il dispositivo si riavvierà in modalità Access Point.')) return;
-  // Invia "WIZARD_RESET" via seriale — lato firmware il comando "reset" su Serial
-  // lo gestiamo mandando un valore speciale sulla caratteristica nome
-  if (activeService) {
-    activeService.getCharacteristic(CHAR_NAME_UUID).then(c => {
-      c.writeValue(new TextEncoder().encode('WIZARD_RESET'));
-      addLog('Comando Wizard Reset inviato.', 'success');
-    }).catch(e => addLog('Errore: ' + e.message, 'error'));
-  } else {
-    addLog('Non connesso — invia "reset" dalla seriale USB.', 'error');
-  }
-  document.getElementById('adminPanelOverlay').style.display = 'none';
-});
-
-document.getElementById('adminChiudiBtn').addEventListener('click', function() {
-  document.getElementById('adminPanelOverlay').style.display = 'none';
-});
-
-
-  document.getElementById('introTrigger').addEventListener('click', function() {
-  introClickCount++;
-  clearTimeout(introClickTimer);
-  introClickTimer = setTimeout(() => { introClickCount = 0; }, 3000);
-  if (introClickCount >= 10) {
-    introClickCount = 0;
-
-    // Blocca se non connesso o in modalità HUB (operativa)
-    if (!activeService) {
-      addLog('Accesso admin: connettiti prima al dispositivo.', 'error');
-      return;
-    }
-    if (activeService.uuid === HUB_SVC_UUID) {
-      addLog('Accesso admin non disponibile in modalità operativa.', 'error');
-      return;
-    }
-
-    document.getElementById('adminLoginOverlay').style.display = 'flex';
-    document.getElementById('adminUser').value = '';
-    document.getElementById('adminPass').value = '';
-    document.getElementById('adminError').textContent = '';
-    document.getElementById('adminUser').focus();
-  }
-});
-
-
-
-	document.getElementById('adminAccediBtn').addEventListener('click', async function() {
-  const user = document.getElementById('adminUser').value.trim();
-  const pass = document.getElementById('adminPass').value;
-
-  if (!activeService) {
-    document.getElementById('adminError').textContent = 'Connettiti prima al dispositivo BLE.';
-    return;
-  }
-
-  document.getElementById('adminError').textContent = 'Verifica in corso...';
-
-  try {
-    const nameChar = await activeService.getCharacteristic(CHAR_NAME_UUID);
-
-    // ← QUI, sostituisci l'await nameChar.startNotifications() con questo:
-    try {
-      await nameChar.startNotifications();
-    } catch(e) {
-      // notify non supportato — uso polling diretto
-      await nameChar.writeValue(new TextEncoder().encode('AUTH:' + user + ':' + pass));
-      await new Promise(r => setTimeout(r, 500));
-      const val = await nameChar.readValue();
-      const resp = new TextDecoder().decode(val);
-      if (resp === 'AUTH_OK') {
+document.getElementById('adminAccediBtn').addEventListener('click', function() {
+    const pwd = document.getElementById('adminPasswordInput').value;
+    if(pwd === "Spaniavello") {
         document.getElementById('adminLoginOverlay').style.display = 'none';
         document.getElementById('adminPanelOverlay').style.display = 'flex';
-        addLog('Accesso admin effettuato.', 'success');
-      } else {
-        document.getElementById('adminError').textContent = 'Credenziali errate.';
-      }
-      return; // esce prima del codice notify sotto
-    }
-
-    // Questo esegue solo se startNotifications ha funzionato
-    const risposta = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout risposta firmware')), 3000);
-      nameChar.addEventListener('characteristicvaluechanged', function handler(e) {
-        const val = new TextDecoder().decode(e.target.value);
-        if (val === 'AUTH_OK' || val === 'AUTH_FAIL') {
-          clearTimeout(timeout);
-          nameChar.removeEventListener('characteristicvaluechanged', handler);
-          resolve(val);
-        }
-      });
-      nameChar.writeValue(new TextEncoder().encode('AUTH:' + user + ':' + pass));
-    });
-
-    if (risposta === 'AUTH_OK') {
-      document.getElementById('adminLoginOverlay').style.display = 'none';
-      document.getElementById('adminPanelOverlay').style.display = 'flex';
-      addLog('Accesso admin effettuato.', 'success');
     } else {
-      document.getElementById('adminError').textContent = 'Credenziali errate.';
+        document.getElementById('adminError').innerText = "Password errata!";
     }
-
-  } catch(e) {
-    document.getElementById('adminError').textContent = 'Errore: ' + e.message;
-  }
 });
 
-
-
-  document.getElementById('adminAnnullaBtn').addEventListener('click', function() {
-    document.getElementById('adminLoginOverlay').style.display = 'none';
-  });
-
-  document.getElementById('adminUser').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') document.getElementById('adminPass').focus();
-  });
-
-  document.getElementById('adminPass').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') document.getElementById('adminAccediBtn').click();
-  });
+document.getElementById('adminCloseBtn').addEventListener('click', function() {
+    document.getElementById('adminPanelOverlay').style.display = 'none';
 });
+
+document.getElementById('adminWizardBtn').addEventListener('click', function() {
+    if(!confirm('Vuoi riavviare l\'Hub in modalità WiFi Wizard?')) return;
+    if (activeService) {
+        activeService.getCharacteristic(CHAR_NAME_UUID).then(c => {
+            c.writeValue(new TextEncoder().encode('WIZARD_RESET'));
+            alert('Comando inviato. Il dispositivo si riavvierà a breve.');
+            document.getElementById('adminPanelOverlay').style.display = 'none';
+        }).catch(e => alert('Errore: ' + e.message));
+    } else {
+        alert('Errore: Dispositivo non connesso.');
+    }
+});
+
+// --- NUOVO EVENTO: RIGENERA LA TARGA ---
+document.getElementById('adminRegenTargaBtn').addEventListener('click', function() {
+    if (!confirm('ATTENZIONE: Verrà generato un nuovo identificativo (Targa) per questo dispositivo. Tutti i collegamenti Bluetooth attuali andranno persi. Procedere?')) return;
+    
+    if (activeService) {
+        activeService.getCharacteristic(CHAR_NAME_UUID).then(c => {
+            c.writeValue(new TextEncoder().encode('REGEN_TARGA'));
+            alert('Comando Rigenera Targa inviato. Il dispositivo si riavvierà a breve.');
+            document.getElementById('adminPanelOverlay').style.display = 'none';
+        }).catch(e => alert('Errore: ' + e.message));
+    } else {
+        alert('Errore: Dispositivo non connesso.');
+    }
+});
+
+// (Incolla qui sotto il resto del tuo script originale per la gestione BLE, modali, log, sniffer e relay)
 </script>
-
-<!-- ADMIN LOGIN OVERLAY -->
-<div id="adminLoginOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
-  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
-    <h3 style="margin-top:0; color:#e2e8f0;">🔐 Accesso Amministratore</h3>
-    <input id="adminUser" type="text" placeholder="Username"
-           style="width:100%; padding:9px; margin-bottom:10px; background:#0a1628; border:1px solid #334155; border-radius:6px; color:#e2e8f0; box-sizing:border-box;">
-    <input id="adminPass" type="password" placeholder="Password"
-           style="width:100%; padding:9px; margin-bottom:10px; background:#0a1628; border:1px solid #334155; border-radius:6px; color:#e2e8f0; box-sizing:border-box;">
-    <p id="adminError" style="color:#f87171; font-size:0.85em; min-height:1.2em; margin:0 0 10px 0;"></p>
-    <div style="display:flex; gap:10px;">
-      <button id="adminAccediBtn" style="flex:1; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700;">
-        Accedi
-      </button>
-      <button id="adminAnnullaBtn" style="flex:1; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">
-        Annulla
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ADMIN PANEL OVERLAY -->
-<div id="adminPanelOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
-  <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:28px; min-width:280px; max-width:360px; width:90%;">
-    <h3 style="margin-top:0; color:#e2e8f0;">⚙️ Pannello Admin</h3>
-    <p style="color:#94a3b8; font-size:0.85em;">Operazioni riservate all'amministratore.</p>
-    <button id="adminWizardBtn" style="width:100%; padding:10px; background:#ca8a04; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; margin-bottom:10px;">
-      🔄 Riavvia Wizard WiFi
-    </button>
-    <button id="adminChiudiBtn" style="width:100%; padding:10px; background:#334155; color:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">
-      Chiudi
-    </button>
-  </div>
-</div>
-
-
 </body>
 </html>
