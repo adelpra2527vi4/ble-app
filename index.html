@@ -350,73 +350,99 @@
         </div>
         <div class="modal-body">
 			<h3 id="introTrigger" style="cursor:default; user-select:none; margin-top:0;">Introduzione</h3>
-
-
-
-            <p>Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.</p>
-			<br>
-			<p>Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <b>Sniffer integrato</b>.</p>
-
-            <h3>1. Accesso alla Modalità Configurazione</h3>
-            <ul>
-                <li>È necessario mantenere premuto il pulsante <b>BOOT</b> posto sull'Hub finché l'indicatore LED non assume una colorazione <b>BIANCA</b>.</li>
-                <li>Al rilascio del pulsante, il LED inizierà a <b>lampeggiare in BLU</b>, indicando che il dispositivo è disponibile ad essere connesso.</li>
-                <li>Selezionare la funzione <b>Connetti Dispositivo</b> per comunicare con il dispositivo</li>
-            </ul>
-
-            <h3>2. Analisi tramite Sniffer Integrato</h3>
-            <p>L'utilizzo dello <b>Sniffer BLE</b> consente di intercettare e analizzare i pacchetti dati dei sensori circostanti in tempo reale.</p>
-			<br>
+			<p>
+			  Il presente manuale illustra la procedura di configurazione dell'Hub, progettato per intercettare i segnali dei dispositivi Bluetooth (BLE) ed estrarne i dati grezzi.
+			</p>
+			<p>
+			  Di seguito vengono descritti i passaggi necessari per la configurazione dei dispositivi avvalendosi dello <strong>Sniffer integrato</strong>.
+			</p>
+			
+			<h3>1. Accesso alla Modalità Configurazione</h3>
+			<ul>
+			  <li>È necessario mantenere premuto il pulsante <strong>BOOT</strong> posto sull'Hub finché l'indicatore LED non assume una colorazione <strong>BIANCA</strong>.</li>
+			  <li>Al rilascio del pulsante, il LED inizierà a <strong>lampeggiare in BLU</strong>, indicando che il dispositivo è disponibile ad essere connesso.</li>
+			  <li>Selezionare la funzione <strong>Connetti Dispositivo</strong> per comunicare con il dispositivo.</li>
+			</ul>
+			
+			<h3>2. Analisi tramite Sniffer Integrato</h3>
+			<p>
+			  L'utilizzo dello <strong>Sniffer BLE</strong> consente di intercettare e analizzare i pacchetti dati dei sensori circostanti in tempo reale.
+			</p>
 			<p>Sono presenti i seguenti pulsanti e funzioni:</p>
-            <ul>
-                <li><b>Isola Sensore:</b> Funzione che nasconde gli altri dispositivi dal traffico di rete per monitorare un singolo dispositivo, particolarmente utile in ambienti con elevata saturazione di segnale.</li>
-                <li><b>Copia MAC:</b> Permette l'acquisizione rapida dell'indirizzo fisico del dispositivo.</li>
-                <li><b>Evidenziazione dei Dati Dinamici:</b> All'interno del Payload, i byte che presentano una colorazione <b style="color: #ef4444;">rossa</b> temporanea <b>non indicano un errore</b>. Tale colorazione evidenzia le variazioni di valore in tempo reale. Stimolando fisicamente il sensore, l'installatore può individuare i byte dinamici (es. temperatura) distinguendoli dalle intestazioni statiche.</li>
-                <li><b>Generazione Automatica della Regola:</b> Selezionando un byte specifico all'interno del Payload, il sistema provvederà a calcolare automaticamente il parametro di Offset, compilando la relativa regola di decodifica.</li>
-            </ul>
-
-            <h3>3. Struttura e Sintassi della Regola</h3>
-            <p>La regola di decodifica istruisce l'Hub sulle coordinate precise per l'estrazione del dato. È composta da 6 parametri separati da virgola:<br>
-            <code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></p>
-            <p><i>Nota tecnica: è consentito l'inserimento di regole multiple all'interno del medesimo slot, utilizzando il punto e virgola ( <b>;</b> ) come separatore.</i></p>
-            <ul>
-                <li><b>FONTE:</b> Definisce l'origine del pacchetto. Valori ammessi: <code>SVC</code> (Service Data) oppure <code>MFR</code> (Manufacturer Data).</li>
-                <li><b>ID:</b> Identificativo esadecimale. Nel caso di origine <code>SVC</code>, corrisponde ai primi 2 byte invertiti (es. <code>6e2a</code> si trascrive come <code>2A6E</code>). Nel caso <code>MFR</code>, corrisponde al codice identificativo dell'azienda produttrice. <b>Nota procedurale:</b> in caso di ID non documentato, l'inserimento del valore <code>0</code> consentirà l'elaborazione dell'intero pacchetto da parte dell'Hub.</li>
-                <li><b>OFFSET:</b> Definisce il numero di byte (coppie di caratteri esadecimali) da ignorare a partire dall'inizio del payload per isolare il dato richiesto.</li>
-                <li><b>LUNGHEZZA:</b> Dimensione in byte occupata dal dato (valore compreso tra 1 e 4).</li>
-                <li><b>OPERATORE:</b> Parametro di conversione matematica per l'output finale.
-                    <ul style="margin-top:0.3rem; margin-bottom:0.3rem; color:#94a3b8;">
-                        <li><code>100</code> = Effettua una divisione per 100 (es. il valore 2450 viene restituito come 24.50).</li>
-                        <li><code>S1</code> = Signed (abilita l'elaborazione dei numeri negativi).</li>
-                        <li><code>B1</code> = Big-Endian (inverte l'ordine dei byte per correggere discrepanze di lettura).</li>
-                        <li><code>36</code> = Esempio pratico: qualora il sensore trasmetta un valore fisso pari a "36" per segnalare l'apertura di un contatto, la divisione per 36 restituirà il valore binario "1" (stato logico alto).</li>
-                    </ul>
-                </li>
-                <li><b>NOME:</b> Etichetta di destinazione per la visualizzazione dell'output (es. <code>temp</code>, <code>lux</code>, <code>pir</code>).</li>
-            </ul>
-
-            <h3>4. Inserimento e Memorizzazione</h3>
-            <p>Una volta isolato l'indirizzo MAC e generata la relativa Regola tramite lo Scanner, l'installatore dovrà riportare tali valori negli appositi campi della sezione <b>Dispositivi</b>. È essenziale abilitare l'interruttore del dispositivo prima di selezionare <b>Salva nel Dispositivo</b>. Tale procedura va ripetuta per ciascun nodo della rete.</p>
-
-            <h3>5. Attivazione della Modalità Operativa</h3>
-            <ul>
-                <li>Al termine delle operazioni di configurazione, è necessario mantenere nuovamente premuto il pulsante <b>BOOT</b> sull'Hub.</li>
-                <li>Il dispositivo terminerà la fase di ascolto e avvierà il ciclo di elaborazione autonoma basato sulle regole appena memorizzate.</li>
-                <li>L'operatore ha la facoltà di ristabilire la connessione tramite l'interfaccia web per monitorare in tempo reale il flusso dei dati decodificati.</li>
-            </ul>
-
-            <h3>Casistiche Particolari</h3>
-            <ul>
-                <li><b>Indirizzo MAC Integrato:</b> Molti sensori includono il proprio indirizzo MAC all'interno del payload. Qualora si rilevino valori estremamente elevati e privi di variazione, è probabile che si stia leggendo l'indirizzo fisico. La risoluzione richiede l'incremento dell'OFFSET per bypassare tale stringa.</li>
-                <li><b>Valori Fluttuanti Incoerenti:</b> Se i dati riportano variazioni cicliche repentine prive di logica ambientale, è altamente probabile che la lettura stia interessando il "contatore di pacchetti" interno al sensore. Si raccomanda di traslare l'OFFSET di un byte.</li>
-            </ul>
-
-            <h3>Esempi di Configurazione Note</h3>
-            <p>
-                <b>Sensore ELA Temp (supporto valori negativi):</b> <code>SVC,2A6E,0,2,S100,temp</code><br>
-                <b>Sensore Shelly BLU (Luminosità + Stato Contatto):</b> <code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code><br>
-                <b>Sensore Xiaomi (Temperatura + Umidità):</b> <code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code>
-            </p>
+			<ul>
+			  <li><strong>Isola Sensore</strong>: funzione che nasconde gli altri dispositivi dal traffico di rete per monitorare un singolo dispositivo, particolarmente utile in ambienti con elevata saturazione di segnale.</li>
+			  <li><strong>Copia MAC</strong>: permette l'acquisizione rapida dell'indirizzo fisico del dispositivo.</li>
+			  <li><strong>Evidenziazione dei Dati Dinamici</strong>: all'interno del payload, i byte che presentano una colorazione <span style="color:#ef4444;">rossa temporanea</span> non indicano un errore. Tale colorazione evidenzia le variazioni di valore in tempo reale. Stimolando fisicamente il sensore, l'installatore può individuare i byte dinamici distinguendoli dalle intestazioni statiche.</li>
+			  <li><strong>Generazione Automatica della Regola</strong>: selezionando un byte specifico all'interno del payload, il sistema provvederà a calcolare automaticamente il parametro di <strong>OFFSET</strong>, compilando la relativa regola di decodifica.</li>
+			</ul>
+			
+			<h3>3. Struttura e Sintassi della Regola</h3>
+			<p>
+			  La regola di decodifica istruisce l'Hub sulle coordinate precise per l'estrazione del dato. È composta da <strong>6 parametri</strong> separati da virgola:
+			</p>
+			<pre><code>FONTE, ID, OFFSET, LUNGHEZZA, OPERATORE, NOME</code></pre>
+			<p>
+			  È consentito inserire <strong>più regole nello stesso slot</strong>, separandole con il punto e virgola <code>;</code>.
+			</p>
+			
+			<h4>Significato dei parametri</h4>
+			<ul>
+			  <li><strong>FONTE</strong>: definisce l'origine del pacchetto. Valori ammessi: <code>SVC</code> (Service Data) oppure <code>MFR</code> (Manufacturer Data).</li>
+			  <li><strong>ID</strong>: identificativo esadecimale. Nel caso di origine <code>SVC</code>, corrisponde ai primi 2 byte invertiti (es. <code>6e2a</code> si trascrive come <code>2A6E</code>). Nel caso <code>MFR</code>, corrisponde al codice identificativo dell'azienda produttrice. In caso di ID non documentato, l'inserimento del valore <code>0</code> consente l'elaborazione dell'intero pacchetto da parte dell'Hub.</li>
+			  <li><strong>OFFSET</strong>: definisce il numero di byte da ignorare a partire dall'inizio del payload per isolare il dato richiesto.</li>
+			  <li><strong>LUNGHEZZA</strong>: dimensione in byte occupata dal dato, con valore compreso tra <code>1</code> e <code>4</code>.</li>
+			  <li><strong>OPERATORE</strong>: parametro di conversione e estrazione del dato finale.</li>
+			  <li><strong>NOME</strong>: etichetta di destinazione per la visualizzazione dell'output.</li>
+			</ul>
+			
+			<h4>Operatori supportati</h4>
+			<ul>
+			  <li><code>100</code> = divisione per 100. Esempio: il valore <code>2450</code> viene restituito come <code>24.50</code>.</li>
+			  <li><code>S</code> = signed, abilita l'elaborazione dei numeri negativi.</li>
+			  <li><code>B</code> = big-endian, inverte l'ordine dei byte per correggere discrepanze di lettura.</li>
+			  <li><code>&amp;N</code> = AND bit a bit con il valore <code>N</code>.</li>
+			  <li><code>&gt;&gt;N</code> = shift a destra di <code>N</code> bit.</li>
+			  <li><code>%N</code> = modulo <code>N</code>.</li>
+			  <li>Numero semplice, ad esempio <code>2</code>, <code>36</code>, <code>1</code> = divisione per quel valore.</li>
+			</ul>
+			
+			<h4>Esempi pratici</h4>
+			<ul>
+			  <li><strong>Sensore ELA Temp</strong> con supporto valori negativi:
+				<pre><code>SVC,2A6E,0,2,S100,temp</code></pre>
+			  </li>
+			  <li><strong>Sensore Shelly BLU</strong> con luminosità e stato contatto:
+				<pre><code>MFR,0,10,1,1,lux;MFR,0,11,1,36,pres</code></pre>
+			  </li>
+			  <li><strong>Sensore Xiaomi</strong> con temperatura e umidità:
+				<pre><code>SVC,181A,6,2,S100,temp;SVC,181A,8,2,100,hum</code></pre>
+			  </li>
+			  <li><strong>Sensore ELA Blue PUCK PIR</strong> con contatore e presenza:
+				<pre><code>SVC,2A78,0,2,&gt;&gt;1,cnt;SVC,2A78,0,2,&amp;1,pir</code></pre>
+			  </li>
+			</ul>
+			
+			<h3>4. Inserimento e Memorizzazione</h3>
+			<p>
+			  Una volta isolato l'indirizzo MAC e generata la relativa regola tramite lo Sniffer, l'installatore dovrà riportare tali valori negli appositi campi della sezione <strong>Dispositivi</strong>.
+			</p>
+			<p>
+			  È essenziale abilitare l'interruttore del dispositivo prima di selezionare <strong>Salva nel Dispositivo</strong>. Tale procedura va ripetuta per ciascun nodo della rete.
+			</p>
+			
+			<h3>5. Attivazione della Modalità Operativa</h3>
+			<ul>
+			  <li>Al termine delle operazioni di configurazione, è necessario mantenere nuovamente premuto il pulsante <strong>BOOT</strong> sull'Hub.</li>
+			  <li>Il dispositivo terminerà la fase di ascolto e avvierà il ciclo di elaborazione autonoma basato sulle regole appena memorizzate.</li>
+			  <li>L'operatore ha la facoltà di ristabilire la connessione tramite l'interfaccia web per monitorare in tempo reale il flusso dei dati decodificati.</li>
+			</ul>
+			
+			<h3>Casistiche Particolari</h3>
+			<ul>
+			  <li><strong>Indirizzo MAC Integrato</strong>: molti sensori includono il proprio indirizzo MAC all'interno del payload. Qualora si rilevino valori estremamente elevati e privi di variazione, è probabile che si stia leggendo l'indirizzo fisico. La risoluzione richiede l'incremento dell'OFFSET per bypassare tale stringa.</li>
+			  <li><strong>Valori Fluttuanti Incoerenti</strong>: se i dati riportano variazioni cicliche repentine prive di logica ambientale, è altamente probabile che la lettura stia interessando il contatore di pacchetti interno al sensore. Si raccomanda di traslare l'OFFSET di un byte.</li>
+			  <li><strong>Dato PIR ELA</strong>: nel caso dei sensori ELA PIR, il dato di presenza e il contatore possono essere contenuti nello stesso campo. In questi casi il contatore viene estratto con <code>&gt;&gt;1</code>, mentre la presenza viene estratta con <code>&amp;1</code>.</li>
+			</ul>
         </div>
     </div>
 </div>
